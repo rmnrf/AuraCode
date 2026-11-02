@@ -1512,11 +1512,6 @@ export interface ExtensionDataReadyMessage {
   type: "extensionDataReady"
 }
 
-export interface TelemetryStateMessage {
-  type: "telemetryState"
-  enabled: boolean
-}
-
 // ============================================
 // Marketplace Messages
 // ============================================
@@ -2018,7 +2013,6 @@ export type ExtensionMessage =
   | AgentBehaviourInvalidatedMessage
   | ClearPendingPromptsMessage
   | ExtensionDataReadyMessage
-  | TelemetryStateMessage
   | RemoteStatusMessage
   | ValidateFilesResultMessage
   | ClipboardWriteResultMessage

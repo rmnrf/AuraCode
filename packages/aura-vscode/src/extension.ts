@@ -30,7 +30,6 @@ import {
   integratedBrowserUseSystemChrome,
   migrateIntegratedBrowserUseSystemChrome,
 } from "./services/browser-automation/chrome-setting"
-import { TelemetryEventName, TelemetryProxy } from "./services/telemetry"
 import { registerCommitMessageService } from "./services/commit-message"
 import { registerCodeActions, registerTerminalActions, AuraCodeActionProvider } from "./services/code-actions"
 import { closeTaskTarget, SurfaceFocus } from "./commands/close-task-target"
@@ -619,35 +618,30 @@ export async function activate(context: vscode.ExtensionContext) {
       agentManager: agentManagerProvider.isActive() ? agentManagerProvider : undefined,
     })
 
-  // Sidebar menus use wrapper commands so this event measures real title button presses,
-  // not programmatic opens, shortcuts, or editor title commands.
-  const track = (button: string, command: string) => {
-    TelemetryProxy.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, {
-      button,
-      surface: "sidebar_title",
-    })
+  // Toolbar buttons dispatch their corresponding commands without analytics.
+  const dispatch = (command: string) => {
     void vscode.commands.executeCommand(command)
   }
 
   // Register toolbar button command handlers
   context.subscriptions.push(
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.plusButtonClicked", () => {
-      track("new_task", "aura-code.new.plusButtonClicked")
+      dispatch("aura-code.new.plusButtonClicked")
     }),
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.historyButtonClicked", () => {
-      track("history", "aura-code.new.historyButtonClicked")
+      dispatch("aura-code.new.historyButtonClicked")
     }),
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.agentManagerOpen", () => {
-      track("agent_manager", "aura-code.new.agentManagerOpen")
+      dispatch("aura-code.new.agentManagerOpen")
     }),
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.marketplaceButtonClicked", () => {
-      track("marketplace", "aura-code.new.marketplaceButtonClicked")
+      dispatch("aura-code.new.marketplaceButtonClicked")
     }),
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.profileButtonClicked", () => {
-      track("profile", "aura-code.new.profileButtonClicked")
+      dispatch("aura-code.new.profileButtonClicked")
     }),
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.settingsButtonClicked", () => {
-      track("settings", "aura-code.new.settingsButtonClicked")
+      dispatch("aura-code.new.settingsButtonClicked")
     }),
     vscode.commands.registerCommand("aura-code.new.plusButtonClicked", () => {
       const tab = activeTabProvider()
@@ -929,7 +923,6 @@ export async function deactivate() {
   for (const result of results) {
     if (result.status === "rejected") console.warn("[Aura New] Extension shutdown failed:", result.reason)
   }
-  TelemetryProxy.getInstance().shutdown()
 }
 
 /** Current IDE color scheme, so the Integrated Browser matches the editor theme. */

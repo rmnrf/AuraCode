@@ -1688,9 +1688,6 @@ export class AuraProvider implements vscode.WebviewViewProvider {
         case "resetReadNotifications":
           await resetReadNotifications(this.notificationsContext())
           break
-        case "telemetry":
-          // Ignore legacy webview events without collecting or transmitting them.
-          break
         case "persistVariant": {
           const stored = this.extensionContext?.globalState.get<Record<string, string>>("variantSelections") ?? {}
           stored[message.key] = message.value
