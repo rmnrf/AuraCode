@@ -188,6 +188,15 @@ function isRecord(v: unknown): v is AnyRecord {
   return !!v && typeof v === "object" && !Array.isArray(v)
 }
 
+function options(existing: unknown, next: SanitizedProviderConfig["options"]) {
+  const old = isRecord(existing) && isRecord(existing.headers) ? existing.headers : {}
+  const headers: Record<string, string | null> = { ...next.headers }
+  for (const key of Object.keys(old)) {
+    if (!(key in headers)) headers[key] = null
+  }
+  return { ...next, ...(Object.keys(headers).length ? { headers } : {}) }
+}
+
 /**
  * Build a provider patch that includes null sentinels for model properties,
  * variants, and variant options that existed in the previous config but are
@@ -232,15 +241,9 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
     }
   }
 
-  const oldOptions = isRecord(existing.options) ? existing.options : {}
-  const oldHeaders = isRecord(oldOptions.headers) ? oldOptions.headers : {}
-  const headers = { ...next.options.headers }
-  for (const key of Object.keys(oldHeaders)) {
-    if (!(key in headers)) (headers as Record<string, string | null>)[key] = null
-  }
   return {
     ...next,
-    options: { ...next.options, ...(Object.keys(headers).length ? { headers } : {}) },
+    options: options(existing.options, next.options),
     models: patched,
   } as SanitizedProviderConfig
 }
