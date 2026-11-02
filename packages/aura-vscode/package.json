@@ -68,8 +68,7 @@
         {
           "id": "aura-code-ActivityBar",
           "title": "AuraCode",
-          "icon": "assets/icons/aura-light.png",
-          "darkIcon": "assets/icons/aura-dark.png"
+          "icon": "assets/icons/aura-activitybar.svg"
         }
       ]
     },

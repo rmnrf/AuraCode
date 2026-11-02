@@ -16,14 +16,19 @@ interface WelcomeEmptyStateProps {
 }
 
 /**
- * Square Aura mark. Hover rotates the mark and crossfades to the yellow Lottie animation,
- * matching Aura Cloud's header logo. The player mounts on first hover so the WASM renderer
- * never delays the empty state; the static mark stays visible until the player can draw, so a
- * slow or failed load never leaves an empty square.
+ * Keep the welcome logo identical to the full-color Marketplace icon.
+ * The activity bar uses a separate monochrome SVG for VS Code theme tinting.
  */
 export const AuraLogo = () => (
-  <div class="aura-logo" aria-label="AuraCode">
-    <strong>A</strong>
+  <div class="aura-logo" role="img" aria-label="AuraCode">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+      <rect x="4" y="4" width="120" height="120" rx="28" fill="#6D5DFB" />
+      <path
+        d="M30 94 57 30h14l27 64H80l-5-14H52l-5 14zm27-29h13l-6-19z"
+        fill="#FFFFFF"
+      />
+      <circle cx="99" cy="29" r="7" fill="#69E8C4" />
+    </svg>
   </div>
 )
 
