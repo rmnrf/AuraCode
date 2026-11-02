@@ -6,6 +6,26 @@ on:
 permissions:
   contents: read
 jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit legacy branding and telemetry references
+        shell: bash
+        run: |
+          set -euo pipefail
+          git grep -nIi -E 'kilo' -- . > /tmp/kilo.txt || true
+          git grep -nIi -E 'telemetry|posthog|sentry|opentelemetry|OTEL_|amplitude|mixpanel|statsig' -- . > /tmp/telemetry.txt || true
+          echo "KILO_MATCH_COUNT=$(wc -l < /tmp/kilo.txt)"
+          echo "KILO_FILE_COUNT=$(cut -d: -f1 /tmp/kilo.txt | sort -u | wc -l)"
+          echo "Kilo paths and excerpts (up to 350):"
+          head -n 350 /tmp/kilo.txt
+          echo "TELEMETRY_MATCH_COUNT=$(wc -l < /tmp/telemetry.txt)"
+          echo "TELEMETRY_FILE_COUNT=$(cut -d: -f1 /tmp/telemetry.txt | sort -u | wc -l)"
+          echo "Telemetry paths:"
+          cut -d: -f1 /tmp/telemetry.txt | sort -u | head -n 350
+          echo "Runtime telemetry reference excerpts:"
+          grep -Ei 'capture|posthog|sentry|transmit|upload|OTEL|tracking|collector|sdk|client|network' /tmp/telemetry.txt | head -n 200 || true
   vsix:
     runs-on: windows-latest
     timeout-minutes: 45
