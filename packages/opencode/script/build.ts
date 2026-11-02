@@ -467,7 +467,7 @@ for (const item of targets) {
   binaries[name] = Script.version
 }
 
-if (Script.release) {
+if (Script.release && !process.argv.includes("--no-publish")) {
   const archives: string[] = [] // auracode_change
   for (const key of Object.keys(binaries)) {
     const archive = key.replace(pkg.name, "aura") // auracode_change

@@ -11,7 +11,7 @@
   "publisher": "auracode",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rmnrf/auracode.git",
+    "url": "https://github.com/rmnrf/auracode-local.git",
     "directory": "packages/aura-vscode"
   },
   "engines": {
@@ -1421,5 +1421,5 @@
     "@auracode/local-only": "workspace:*"
   },
   "peerDependencies": {},
-  "homepage": "https://github.com/rmnrf/auracode"
+  "homepage": "https://github.com/rmnrf/auracode-local"
 }

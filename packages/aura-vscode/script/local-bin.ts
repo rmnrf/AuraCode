@@ -256,10 +256,10 @@ async function ensureBuiltBinary(): Promise<string> {
   const bun = String(pkg.packageManager)
   log("Building CLI binary...")
   try {
-    await $`bunx ${bun} run build --single --skip-install`.cwd(opencodeDir)
+    await $`bunx ${bun} run build --single --skip-install --no-publish`.cwd(opencodeDir)
   } catch (err) {
     log(`Pinned bunx build failed (${err}), running via active bun runtime...`)
-    await $`bun run script/build.ts --single --skip-install`.cwd(opencodeDir)
+    await $`bun run script/build.ts --single --skip-install --no-publish`.cwd(opencodeDir)
   }
 
   const built = await findAuraBinaryInOpencodeDist()
