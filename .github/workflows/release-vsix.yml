@@ -49,6 +49,6 @@ jobs:
           EOF
           gh release create v1.0.1-icons verified/auracode-1.0.1-win32-x64.vsix \
             --repo "$GITHUB_REPOSITORY" \
-            --target 5763bf3309823bfe3c24953d166720b51f070056 \
+            --target "$GITHUB_SHA" \
             --title 'AuraCode 1.0.1 — Updated Icons (Windows x64)' \
             --notes-file notes.md
