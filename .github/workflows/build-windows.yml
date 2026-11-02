@@ -1,0 +1,61 @@
+name: Build AuraCode for Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  vsix:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      AURA_VERSION: 1.0.0
+      AURA_CHANNEL: latest
+      AURA_RELEASE: "true"
+      AURA_TELEMETRY_LEVEL: "off"
+      DO_NOT_TRACK: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies and refresh the renamed workspace lockfile
+        run: bun install
+      - name: Verify the local-only boundary
+        run: node --experimental-strip-types --test packages/local-only/test/policy.test.ts
+      - name: Verify telemetry stays disabled
+        run: node --experimental-transform-types --test packages/aura-telemetry/src/__tests__/privacy.test.ts
+      - name: Regenerate the SDK
+        working-directory: packages/aura-vscode
+        run: bun run prepare:sdk
+      - name: Type check backend
+        working-directory: packages/opencode
+        run: bun run typecheck
+      - name: Type check and lint extension
+        working-directory: packages/aura-vscode
+        run: |
+          bun run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          bun run lint
+      - name: Compile native Windows backend and bundle extension
+        working-directory: packages/aura-vscode
+        run: |
+          bun script/local-bin.ts --compiled
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          bun run bundle:production
+      - name: Package VSIX
+        working-directory: packages/aura-vscode
+        run: bunx vsce package --no-dependencies --target win32-x64 --out ../../auracode-1.0.0-win32-x64.vsix
+      - name: Audit packaged branding
+        run: node script/audit-vsix.mjs auracode-1.0.0-win32-x64.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auracode-1.0.0-win32-x64
+          path: auracode-1.0.0-win32-x64.vsix
+          if-no-files-found: error
