@@ -2,20 +2,12 @@ import * as vscode from "vscode"
 
 type Post = (msg: { type: "telemetryState"; enabled: boolean }) => void
 
-/**
- * Push the current VS Code telemetry-enabled flag to a webview. Called on
- * webview ready / re-sync so the webview can gate feedback UI on the flag.
- */
+/** Disabled editor event collection, regardless of VS Code settings. */
 export function pushTelemetryState(post: Post): void {
-  post({ type: "telemetryState", enabled: vscode.env.isTelemetryEnabled })
+  post({ type: "telemetryState", enabled: false })
 }
 
-/**
- * Re-push telemetry state whenever the user toggles the VS Code telemetry
- * setting while a webview is open, so feedback UI shows/hides in real time.
- */
-export function watchTelemetryState(post: Post): vscode.Disposable {
-  return vscode.env.onDidChangeTelemetryEnabled((enabled) => {
-    post({ type: "telemetryState", enabled })
-  })
+/** No subscription is needed when telemetry is permanently disabled. */
+export function watchTelemetryState(_post: Post): vscode.Disposable {
+  return new vscode.Disposable(() => {})
 }

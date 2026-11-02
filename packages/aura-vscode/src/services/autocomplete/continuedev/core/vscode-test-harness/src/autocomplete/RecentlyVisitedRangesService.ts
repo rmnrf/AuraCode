@@ -9,7 +9,6 @@ import * as vscode from "vscode"
  */
 export class RecentlyVisitedRangesService {
   private cache: LRUCache<string, Array<AutocompleteCodeSnippet & { timestamp: number }>>
-  // Default value, we override in initWithPostHog
   private numSurroundingLines = 20
   private maxRecentFiles = 3
   private maxSnippetsPerFile = 3
@@ -20,18 +19,6 @@ export class RecentlyVisitedRangesService {
     this.cache = new LRUCache<string, Array<AutocompleteCodeSnippet & { timestamp: number }>>({
       max: this.maxRecentFiles,
     })
-
-    void this.initWithPostHog()
-  }
-
-  private async initWithPostHog() {
-    const recentlyVisitedRangesNumSurroundingLinesOptions = [null, 5, 10, 15, 20] // was feature flagged
-    const recentlyVisitedRangesNumSurroundingLines = recentlyVisitedRangesNumSurroundingLinesOptions[0]
-
-    if (recentlyVisitedRangesNumSurroundingLines) {
-      this.isEnabled = true
-      this.numSurroundingLines = recentlyVisitedRangesNumSurroundingLines
-    }
 
     this.disposable = vscode.window.onDidChangeTextEditorSelection(this.cacheCurrentSelectionContext)
   }

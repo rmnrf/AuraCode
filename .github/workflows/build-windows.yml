@@ -14,12 +14,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git grep -nIi -E 'kilo' -- . > /tmp/kilo.txt || true
+          legacy=$(printf '\\153\\151\\154\\157')
+          git grep -nIi -E "$legacy" -- . > /tmp/legacy.txt || true
           git grep -nIi -E 'telemetry|posthog|sentry|opentelemetry|OTEL_|amplitude|mixpanel|statsig' -- . > /tmp/telemetry.txt || true
-          echo "KILO_MATCH_COUNT=$(wc -l < /tmp/kilo.txt)"
-          echo "KILO_FILE_COUNT=$(cut -d: -f1 /tmp/kilo.txt | sort -u | wc -l)"
-          echo "Kilo paths and excerpts (up to 350):"
-          head -n 350 /tmp/kilo.txt
+          echo "LEGACY_MATCH_COUNT=$(wc -l < /tmp/legacy.txt)"
+          echo "LEGACY_FILE_COUNT=$(cut -d: -f1 /tmp/legacy.txt | sort -u | wc -l)"
+          echo "Legacy branding paths and excerpts (up to 350):"
+          head -n 350 /tmp/legacy.txt
           echo "TELEMETRY_MATCH_COUNT=$(wc -l < /tmp/telemetry.txt)"
           echo "TELEMETRY_FILE_COUNT=$(cut -d: -f1 /tmp/telemetry.txt | sort -u | wc -l)"
           echo "Telemetry paths:"

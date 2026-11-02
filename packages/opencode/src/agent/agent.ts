@@ -548,8 +548,8 @@ const layer = Layer.effect(
         const isOpenaiOauth = model.providerID === "openai" && authInfo?.type === "oauth"
 
         const params = {
-          // auracode_change start - enable telemetry with custom PostHog tracer
-          experimental_telemetry: AuraAgent.telemetryOptions(cfg),
+          // auracode_change start - always disable AI SDK telemetry and spans
+          experimental_telemetry: { isEnabled: false },
           // auracode_change end
           temperature: 0.3,
           messages: [
