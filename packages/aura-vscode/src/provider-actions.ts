@@ -67,15 +67,21 @@ export async function fetchProviderData(client: AuraClient, dir: string) {
   const storedKeys: Record<string, StoredProviderKey> = {}
   const all = response.all.map((item) => {
     const raw = item as Record<string, unknown>
-    if (typeof raw.id === "string" && typeof raw.key === "string" && raw.key) {
+    const options = record(raw.options) ? raw.options : undefined
+    const key =
+      typeof raw.key === "string" && raw.key
+        ? raw.key
+        : typeof options?.apiKey === "string"
+          ? options.apiKey
+          : undefined
+    if (typeof raw.id === "string" && key) {
       authStates[raw.id] = "api"
       // Retain the key on the extension side so model fetches for an existing
       // provider can authenticate without the webview ever seeing the secret
       // (#10139). Only providers with a configured baseURL are retained — the
       // fetch handler requires a URL match before applying a stored key.
-      const options = record(raw.options) ? raw.options : undefined
       const baseURL = options && typeof options.baseURL === "string" ? options.baseURL : undefined
-      if (baseURL) storedKeys[raw.id] = { key: raw.key, baseURL }
+      if (baseURL) storedKeys[raw.id] = { key, baseURL }
     }
     if (!("key" in raw)) return item
     const next = { ...raw }
@@ -425,7 +431,10 @@ export async function saveCustomProvider(
     const nextDisabled = disabled.filter((item: string) => item !== id)
     const existing = (globalConfig.provider as Record<string, unknown> | undefined)?.[id]
     const patch = withCustomProviderDeletions(existing, sanitized.value)
-    if (apiKeyChanged) patch.options = { ...patch.options, apiKey: "" } as typeof patch.options
+    if (apiKeyChanged) {
+      patch.options = { ...patch.options, apiKey: "" } as typeof patch.options
+      patch.env = sanitized.value.env ?? []
+    }
     const { data: updated } = await ctx.client.global.config.update(
       {
         config: {
