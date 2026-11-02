@@ -15,22 +15,15 @@ interface WelcomeEmptyStateProps {
   footer?: JSX.Element
 }
 
-/**
- * Keep the welcome logo identical to the full-color Marketplace icon.
- * The activity bar uses a separate monochrome SVG for VS Code theme tinting.
- */
-export const AuraLogo = () => (
-  <div class="aura-logo" role="img" aria-label="AuraCode">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
-      <rect x="4" y="4" width="120" height="120" rx="28" fill="#6D5DFB" />
-      <path
-        d="M30 94 57 30h14l27 64H80l-5-14H52l-5 14zm27-29h13l-6-19z"
-        fill="#FFFFFF"
-      />
-      <circle cx="99" cy="29" r="7" fill="#69E8C4" />
-    </svg>
-  </div>
-)
+/** Load the full-color AuraCode icon packaged with the extension. */
+export const AuraLogo = () => {
+  const icons = (window as Window & { ICONS_BASE_URI?: string }).ICONS_BASE_URI
+  return (
+    <div class="aura-logo" role="img" aria-label="AuraCode">
+      <img src={`${icons ?? ""}/aura.png`} alt="" />
+    </div>
+  )
+}
 
 export const WelcomeEmptyState: Component<WelcomeEmptyStateProps> = (props) => {
   const session = useSession()
