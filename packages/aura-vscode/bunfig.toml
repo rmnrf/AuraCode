@@ -1,2 +1,4 @@
 [test]
-preload = ["./tests/setup/vscode-mock.ts", "./tests/setup/worker-url.ts"]
+# The local-only source snapshot contains pure provider regression tests.
+# VS Code/worker test harness fixtures are not included in this package.
+preload = []
