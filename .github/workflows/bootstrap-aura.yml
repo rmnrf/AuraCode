@@ -55,10 +55,12 @@ jobs:
           '@ | Set-Content -LiteralPath "$env:RUNNER_TEMP/restore-aura.mjs" -Encoding utf8
           node "$env:RUNNER_TEMP/restore-aura.mjs"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git restore --source='${{ github.sha }}' --staged -- .github/workflows/bootstrap-aura.yml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git fetch origin main
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $remoteTree = git rev-parse 'FETCH_HEAD^{tree}'
-          if ($remoteTree -ne $env:AURA_EXPECTED_TREE) {
+          git diff --quiet --cached FETCH_HEAD
+          if ($LASTEXITCODE -eq 1) {
             $remoteHead = git rev-parse FETCH_HEAD
             if ($remoteHead -ne '${{ github.sha }}') { throw 'The repository changed during source import' }
             git config user.name 'github-actions[bot]'
