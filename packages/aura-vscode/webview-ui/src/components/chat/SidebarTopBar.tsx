@@ -12,19 +12,17 @@ import { IconButton } from "@auracode/aura-ui/icon-button"
 import { Tooltip } from "@auracode/aura-ui/tooltip"
 import { useVSCode } from "../../context/vscode"
 import { useLanguage } from "../../context/language"
-import { TelemetryEventName } from "../../../../src/services/telemetry/types"
 
 export interface SidebarTopBarProps {
   onNewTask: () => void
   onHistory: () => void
-  /** Telemetry surface — distinguishes the sidebar from the "Open in Tab" panel, which shares this component. */
+  /** Legacy surface identifier, retained for compatible host options. */
   surface: string
 }
 
 interface Action {
   key: string
   icon: "plus" | "history" | "organization" | "extensions" | "user" | "settings-gear"
-  button: string
   run: () => void
 }
 
@@ -32,24 +30,16 @@ export const SidebarTopBar: Component<SidebarTopBarProps> = (props) => {
   const vscode = useVSCode()
   const language = useLanguage()
 
-  // Mirrors the telemetry the native toolbar buttons used to record, so analytics aren't lost.
-  const track = (button: string) =>
-    vscode.postMessage({
-      type: "telemetry",
-      event: TelemetryEventName.TITLE_BUTTON_CLICKED,
-      properties: { button, surface: props.surface },
-    })
-
   const open = (type: "openAgentManager" | "openMarketplacePanel" | "openProfilePanel" | "openSettingsPanel") =>
     vscode.postMessage({ type })
 
   const actions: Action[] = [
-    { key: "newTask", icon: "plus", button: "new_task", run: () => props.onNewTask() },
-    { key: "history", icon: "history", button: "history", run: () => props.onHistory() },
-    { key: "agentManager", icon: "organization", button: "agent_manager", run: () => open("openAgentManager") },
-    { key: "marketplace", icon: "extensions", button: "marketplace", run: () => open("openMarketplacePanel") },
-    { key: "profile", icon: "user", button: "profile", run: () => open("openProfilePanel") },
-    { key: "settings", icon: "settings-gear", button: "settings", run: () => open("openSettingsPanel") },
+    { key: "newTask", icon: "plus", run: () => props.onNewTask() },
+    { key: "history", icon: "history", run: () => props.onHistory() },
+    { key: "agentManager", icon: "organization", run: () => open("openAgentManager") },
+    { key: "marketplace", icon: "extensions", run: () => open("openMarketplacePanel") },
+    { key: "profile", icon: "user", run: () => open("openProfilePanel") },
+    { key: "settings", icon: "settings-gear", run: () => open("openSettingsPanel") },
   ]
 
   return (
@@ -64,10 +54,7 @@ export const SidebarTopBar: Component<SidebarTopBarProps> = (props) => {
                 variant="ghost"
                 size="small"
                 aria-label={label}
-                onClick={() => {
-                  track(action.button)
-                  action.run()
-                }}
+                onClick={action.run}
               />
             </Tooltip>
           )
