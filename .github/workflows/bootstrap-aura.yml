@@ -1,0 +1,110 @@
+name: Import and build AuraCode
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      AURA_ARCHIVE_SHA256: 52058a6e0735e65308b451dd57dcb39bba74f9a50161cf839abe8c3641286caf
+      AURA_EXPECTED_TREE: d56c13b8da099e4025552622d243c0d24f7ed727
+      AURA_VERSION: 1.0.0
+      AURA_CHANNEL: latest
+      AURA_RELEASE: "true"
+      DO_NOT_TRACK: "1"
+      AURA_TELEMETRY_LEVEL: "off"
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Restore and verify the reviewed local-only source snapshot
+        shell: pwsh
+        run: |
+          @'
+          import fs from "node:fs"
+          import { createHash } from "node:crypto"
+          import { execFileSync } from "node:child_process"
+          
+          const archive = "auracode-local-source.tar.gz"
+          const digest = createHash("sha256").update(fs.readFileSync(archive)).digest("hex")
+          if (digest !== process.env.AURA_ARCHIVE_SHA256) throw new Error("Source archive checksum mismatch")
+          execFileSync("tar", ["-xzf", archive], { stdio: "inherit" })
+          const entries = JSON.parse(fs.readFileSync(".aura-bootstrap-index.json", "utf8"))
+          if (entries.some(entry => /[\r\n\0]/.test(entry.path))) throw new Error("Unsupported path in source manifest")
+          execFileSync("git", ["rm", "-rf", "--ignore-unmatch", "--pathspec-from-file=.aura-bootstrap-delete", "--pathspec-file-nul"], { stdio: "ignore" })
+          const hashes = execFileSync("git", ["hash-object", "-w", "--no-filters", "--stdin-paths"], {
+            input: entries.map(entry => entry.path).join("\n") + "\n", encoding: "utf8", maxBuffer: 8 * 1024 * 1024,
+          }).trim().split(/\r?\n/)
+          for (let index = 0; index < entries.length; index++) {
+            if (entries[index].sha !== hashes[index]) throw new Error(`Source blob mismatch: ${entries[index].path}`)
+          }
+          execFileSync("git", ["update-index", "-z", "--index-info"], {
+            input: entries.map(entry => `${entry.mode} ${entry.sha}\t${entry.path}\0`).join(""), maxBuffer: 8 * 1024 * 1024,
+          })
+          execFileSync("git", ["rm", "-f", "--ignore-unmatch", "--", archive, ".github/workflows/bootstrap-aura.yml"], { stdio: "ignore" })
+          const tree = execFileSync("git", ["write-tree"], { encoding: "utf8" }).trim()
+          if (tree !== process.env.AURA_EXPECTED_TREE) throw new Error(`Source tree mismatch: ${tree}`)
+          for (const file of [archive, ".aura-bootstrap-index.json", ".aura-bootstrap-delete"]) fs.rmSync(file, { force: true })
+          console.log(`Verified exact AuraCode source tree: ${tree}`)
+          '@ | Set-Content -LiteralPath "$env:RUNNER_TEMP/restore-aura.mjs" -Encoding utf8
+          node "$env:RUNNER_TEMP/restore-aura.mjs"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git fetch origin main
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $remoteTree = git rev-parse 'FETCH_HEAD^{tree}'
+          if ($remoteTree -ne $env:AURA_EXPECTED_TREE) {
+            $remoteHead = git rev-parse FETCH_HEAD
+            if ($remoteHead -ne '${{ github.sha }}') { throw 'The repository changed during source import' }
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'feat: import local-only AuraCode extension and required runtime'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git push origin HEAD:main
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install
+      - name: Verify local transport and disabled telemetry
+        run: |
+          node --experimental-strip-types --test packages/local-only/test/policy.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --experimental-transform-types --test packages/aura-telemetry/src/__tests__/privacy.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node script/audit-branding.mjs
+      - name: Regenerate SDK
+        working-directory: packages/aura-vscode
+        run: bun run prepare:sdk
+      - name: Verify backend types
+        working-directory: packages/opencode
+        run: bun run typecheck
+      - name: Verify extension types and lint
+        working-directory: packages/aura-vscode
+        run: |
+          bun run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          bun run lint
+      - name: Compile Windows backend and bundle extension
+        working-directory: packages/aura-vscode
+        run: |
+          bun script/local-bin.ts --compiled
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          bun run bundle:production
+      - name: Package Windows VSIX
+        working-directory: packages/aura-vscode
+        run: bunx vsce package --no-dependencies --target win32-x64 --out ../../auracode-1.0.0-win32-x64.vsix
+      - name: Audit VSIX
+        run: node script/audit-vsix.mjs auracode-1.0.0-win32-x64.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auracode-1.0.0-win32-x64
+          path: auracode-1.0.0-win32-x64.vsix
+          if-no-files-found: error
