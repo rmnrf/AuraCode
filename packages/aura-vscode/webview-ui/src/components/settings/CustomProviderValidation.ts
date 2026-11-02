@@ -1,4 +1,5 @@
 import type { CustomProviderPackage } from "../../../../src/shared/provider-model"
+import { endpoint } from "@auracode/local-only"
 import type { Modalities, ModelEntry, VariantEntry } from "./CustomProviderModelCard"
 
 type Translator = (key: string, params?: Record<string, string>) => string
@@ -158,7 +159,13 @@ function resolveEnv(rawEnv: string | undefined, savedEnv: string[] | undefined) 
 export function validateCustomProvider(input: ValidateArgs): ValidateResult {
   const providerID = input.form.providerID.trim()
   const name = input.form.name.trim()
-  const baseURL = input.form.baseURL.trim()
+  let baseURL = input.form.baseURL.trim()
+  let localError: string | undefined
+  try {
+    baseURL = endpoint(baseURL)
+  } catch (err) {
+    localError = err instanceof Error ? err.message : String(err)
+  }
   const apiKey = input.form.apiKey.trim()
 
   const rawEnv = apiKey.match(/^\{env:([^}]+)\}$/)?.[1]?.trim()
@@ -179,7 +186,7 @@ export function validateCustomProvider(input: ValidateArgs): ValidateResult {
     ? input.t("provider.custom.error.baseURL.required")
     : !/^https?:\/\//.test(baseURL)
       ? input.t("provider.custom.error.baseURL.format")
-      : undefined
+      : localError
 
   const seenModels = new Set<string>()
   const modelErrors = input.form.models.map((m) => checkModel(m, seenModels, input.t))

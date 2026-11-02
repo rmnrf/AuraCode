@@ -59,15 +59,9 @@ export async function fetchProviderData(client: AuraClient, dir: string) {
           .then((r) => r.data ?? {})
           .catch(() => ({}))
       : Promise.resolve({})
-  const auraRequest = client.aura
-    .authStatus({ directory: dir }, { throwOnError: true })
-    .then((r) => r.data)
-    .catch(() => undefined)
-
-  const [{ data: response }, authMethods, auraAuth] = await Promise.all([
+  const [{ data: response }, authMethods] = await Promise.all([
     client.provider.list({ directory: dir }, { throwOnError: true }),
     authRequest,
-    auraRequest,
   ])
   const authStates: Record<string, AuthState> = {}
   const storedKeys: Record<string, StoredProviderKey> = {}
@@ -88,42 +82,15 @@ export async function fetchProviderData(client: AuraClient, dir: string) {
     delete next.key
     return next as (typeof response.all)[number]
   })
-  delete authStates[AURA_PROVIDER_ID]
-  if (auraAuth?.authenticated && auraAuth.type) authStates[AURA_PROVIDER_ID] = auraAuth.type
-  const organizationId = auraAuth ? (auraAuth.organizationId ?? null) : undefined
-  const defaults = { ...response.default }
-  if (organizationId) {
-    const models = all.find((item) => item.id === AURA_PROVIDER_ID)?.models ?? {}
-    const recommended = response.default[AURA_PROVIDER_ID]
-    const model = recommended && Object.hasOwn(models, recommended) ? recommended : Object.keys(models).at(0)
-    if (model) defaults[AURA_PROVIDER_ID] = model
-    if (!model) delete defaults[AURA_PROVIDER_ID]
-  }
-  if (!auraAuth) delete defaults[AURA_PROVIDER_ID]
   return {
-    response: {
-      ...response,
-      all: auraAuth ? all : all.filter((item) => item.id !== AURA_PROVIDER_ID),
-      connected: auraAuth ? response.connected : response.connected.filter((id) => id !== AURA_PROVIDER_ID),
-      default: defaults,
-    },
+    response: { ...response, all },
     authMethods,
     authStates,
     storedKeys,
-    organizationId,
-    ready: !!auraAuth,
-    unavailable: catalogUnavailable(response.failed, all, organizationId),
+    organizationId: null,
+    ready: true,
+    unavailable: false,
   }
-}
-
-/** An organization's Aura catalog failed to load, so Aura has no models to pick. */
-function catalogUnavailable(
-  failed: string[] | undefined,
-  all: ReadonlyArray<{ id: string; models: Record<string, unknown> }>,
-  organizationId: string | null | undefined,
-) {
-  if (!organizationId || !failed?.includes(AURA_PROVIDER_ID)) return false
-  return Object.keys(all.find((item) => item.id === AURA_PROVIDER_ID)?.models ?? {}).length === 0
 }
 
 /**
@@ -458,6 +425,7 @@ export async function saveCustomProvider(
     const nextDisabled = disabled.filter((item: string) => item !== id)
     const existing = (globalConfig.provider as Record<string, unknown> | undefined)?.[id]
     const patch = withCustomProviderDeletions(existing, sanitized.value)
+    if (apiKeyChanged) patch.options = { ...patch.options, apiKey: "" } as typeof patch.options
     const { data: updated } = await ctx.client.global.config.update(
       {
         config: {

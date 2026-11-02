@@ -506,6 +506,15 @@ export const dict = {
   "settings.providers.modeModels": "Модель для режима",
   "settings.providers.modeModels.description":
     "Переопределите модель по умолчанию для определённых режимов. Если не задано, используется глобальная модель по умолчанию.",
+  "settings.providers.local.description": "Настройте локальные серверы: API-ключи, заголовки, модели и возможности.",
+  "settings.providers.local.notice": "Доступны только адреса этой машины. Телеметрия и облачные интеграции отключены.",
+  "settings.providers.local.disabled": "Отключён",
+  "settings.providers.local.connected": "Подключён",
+  "settings.providers.local.configured": "Настроен",
+  "settings.providers.local.disable": "Отключить",
+  "settings.providers.local.url":
+    "Используйте 127.0.0.1, localhost или [::1]. API-ключи и заголовки отправляются только этому локальному серверу.",
+
   "provider.custom.title": "Пользовательский провайдер",
   "provider.custom.description.prefix": "Настройте пользовательский провайдер. См. ",
   "provider.custom.description.link": "документацию по настройке провайдера",

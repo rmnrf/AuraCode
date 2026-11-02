@@ -422,6 +422,16 @@ export const dict = {
   "settings.providers.action.changeApiKey": "Change API key",
   "settings.providers.custom.description": "Add a custom provider by base URL.",
 
+  "settings.providers.local.description": "Configure local servers with API keys, headers, models and capabilities.",
+  "settings.providers.local.notice":
+    "Only loopback endpoints are accepted. Telemetry and cloud integrations remain disabled.",
+  "settings.providers.local.disabled": "Disabled",
+  "settings.providers.local.connected": "Connected",
+  "settings.providers.local.configured": "Configured",
+  "settings.providers.local.disable": "Disable",
+  "settings.providers.local.url":
+    "Use 127.0.0.1, localhost or [::1]. API keys and headers are sent only to this local server.",
+
   "provider.custom.title": "Custom provider",
   "provider.custom.description.prefix": "Configure a custom provider. See the ",
   "provider.custom.description.link": "provider config docs",

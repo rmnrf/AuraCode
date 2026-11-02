@@ -3,6 +3,10 @@
  * Runs in the extension host — no CLI backend dependency.
  */
 
+import { endpoint } from "@auracode/local-only"
+import { auraFetch } from "@auracode/local-only/fetch"
+import { parseCustomProviderSecret } from "./custom-provider"
+
 type Options = {
   baseURL: string
   apiKey?: string
@@ -29,16 +33,20 @@ export class FetchModelsError extends Error {
 }
 
 export async function fetchOpenAIModels(opts: Options): Promise<ModelEntry[]> {
-  const url = opts.baseURL.replace(/\/+$/, "") + "/models"
+  const url = endpoint(opts.baseURL) + "/models"
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...opts.headers,
   }
-  if (opts.apiKey) {
-    headers["Authorization"] = `Bearer ${opts.apiKey}`
+  const secret = parseCustomProviderSecret(opts.apiKey ?? "")
+  if ("error" in secret) throw new FetchModelsError(secret.error)
+  const key = secret.value.env ? process.env[secret.value.env] : secret.value.apiKey
+  if (secret.value.env && !key) throw new FetchModelsError(`Environment variable ${secret.value.env} is not set`)
+  if (key) {
+    headers["Authorization"] = `Bearer ${key}`
   }
 
-  const response = await fetch(url, {
+  const response = await auraFetch(url, {
     method: "GET",
     headers,
     signal: AbortSignal.timeout(15_000),

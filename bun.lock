@@ -211,7 +211,7 @@
     },
     "packages/aura-vscode": {
       "name": "aura-code",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.39.0",
         "@auracode/aura-gateway": "workspace:*",

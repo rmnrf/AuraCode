@@ -36,20 +36,73 @@ test("project config and model overrides cannot enable cloud providers or plugin
       local: {
         npm: "evil-provider",
         env: ["OPENAI_API_KEY"],
-        options: { baseURL: "http://localhost:8080/v1", headers: { "X-Tracking-ID": "secret" } },
+        options: { baseURL: "http://localhost:8080/v1", headers: { "X-Local-Server": "custom" } },
         models: { "my-model": { name: "My model" } },
       },
     },
   })
   assert.deepEqual(Object.keys(config.provider), ["local"])
   assert.equal(config.provider.local.npm, "@ai-sdk/openai-compatible")
-  assert.deepEqual(config.provider.local.options, { baseURL: "http://127.0.0.1:8080/v1", apiKey: "local" })
+  assert.deepEqual(config.provider.local.options, {
+    baseURL: "http://127.0.0.1:8080/v1",
+    headers: { "X-Local-Server": "custom" },
+  })
   assert.deepEqual(config.enabled_providers, ["local"])
   assert.equal(config.model, "local/my-model")
   assert.equal(config.small_model, config.model)
   assert.deepEqual(config.plugin, [])
   assert.deepEqual(config.mcp, {})
   assert.throws(() => localConfig({ provider: { local: { options: { baseURL: "https://example.com" } } } }))
+})
+
+test("custom IDs, protocols, credentials and model capabilities survive effective config", () => {
+  const models = {
+    vision: {
+      name: "Vision",
+      reasoning: true,
+      modalities: { input: ["text", "image"] },
+      variants: { deep: { reasoningEffort: "high" } },
+      limit: { context: 131072, output: 8192 },
+    },
+    removed: null,
+  }
+  const config = localConfig({
+    provider: {
+      workstation: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Workstation",
+        env: ["LOCAL_KEY"],
+        options: {
+          baseURL: "http://localhost:8080/v1",
+          apiKey: "test-key",
+          headers: { "X-Local": "yes" },
+          timeout: 60000,
+        },
+        models,
+      },
+      responses: { npm: "@ai-sdk/openai", options: { baseURL: "http://127.0.0.1:1234/v1" }, models },
+      messages: { npm: "@ai-sdk/anthropic", options: { baseURL: "http://[::1]:8081/v1" }, models },
+    },
+    model: "workstation/vision",
+    small_model: "responses/vision",
+    disabled_providers: ["messages"],
+  })
+  assert.equal(config.model, "workstation/vision")
+  assert.equal(config.small_model, "responses/vision")
+  assert.deepEqual(config.disabled_providers, ["messages"])
+  assert.deepEqual(config.provider.workstation.models.vision, { ...models.vision, tool_call: true })
+  assert.ok(!("removed" in config.provider.workstation.models))
+  assert.equal(config.provider.workstation.options.apiKey, "test-key")
+  assert.deepEqual(config.provider.workstation.env, ["LOCAL_KEY"])
+  assert.equal(config.provider.responses.npm, "@ai-sdk/openai")
+  assert.equal(config.provider.messages.npm, "@ai-sdk/anthropic")
+  assert.throws(() =>
+    localConfig({ provider: { remote: { npm: "@ai-sdk/openai", options: { baseURL: "https://api.openai.com/v1" } } } }),
+  )
+  assert.deepEqual(localConfig({ provider: { removed: null } }).provider, {})
+  assert.ok(
+    !("apiKey" in localConfig({ provider: { local: { options: { apiKey: "local" } } } }).provider.local.options),
+  )
 })
 
 test("streams an actual local response and refuses every HTTP redirect", async () => {

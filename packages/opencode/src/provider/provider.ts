@@ -1,4 +1,4 @@
-import { endpoint } from "@auracode/local-only" // auracode_change
+import { endpoint, LOCAL_ADAPTERS } from "@auracode/local-only" // auracode_change
 // auracode_change
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
@@ -135,6 +135,8 @@ type BundledSDK = {
 
 const BUNDLED_PROVIDERS: Record<string, () => Promise<(opts: any) => BundledSDK>> = {
   "@ai-sdk/openai-compatible": () => import("@ai-sdk/openai-compatible").then((m) => m.createOpenAICompatible),
+  "@ai-sdk/openai": () => import("@ai-sdk/openai").then((m) => m.createOpenAI),
+  "@ai-sdk/anthropic": () => import("@ai-sdk/anthropic").then((m) => m.createAnthropic),
 }
 
 type CustomModelLoader = (sdk: any, modelID: string, options?: Record<string, any>, model?: Model) => Promise<any>
@@ -962,8 +964,8 @@ const layer = Layer.effect(
     async function resolveSDK(model: Model, s: State, envs: Record<string, string | undefined>) {
       try {
         const provider = s.providers[model.providerID]
-        if (model.providerID !== "local" || model.api.npm !== "@ai-sdk/openai-compatible")
-          throw new Error("AuraCode only supports the local OpenAI-compatible provider")
+        if (!LOCAL_ADAPTERS.some((npm) => npm === model.api.npm))
+          throw new Error("AuraCode only supports custom adapters with a loopback endpoint")
         const options: typeof provider.options = {
           ...provider.options,
           baseURL: endpoint(String(provider.options.baseURL)),
@@ -995,6 +997,7 @@ const layer = Layer.effect(
 
         if (baseURL !== undefined) options["baseURL"] = baseURL
         if (options["apiKey"] === undefined && provider.key) options["apiKey"] = provider.key
+        if (options["apiKey"] === undefined) options["apiKey"] = "local" // auracode_change - optional local auth
         if (model.headers)
           options["headers"] = {
             ...options["headers"],

@@ -2,7 +2,7 @@
   "name": "aura-code",
   "displayName": "AuraCode",
   "description": "Local AI coding agent for an OpenAI-compatible server running on your computer. No cloud model providers or event telemetry.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "icon": "assets/icons/aura.png",
   "galleryBanner": {
     "color": "#FFFFFF",

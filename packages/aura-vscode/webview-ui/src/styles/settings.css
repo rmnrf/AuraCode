@@ -402,3 +402,21 @@
 [data-component="card"]:has(.settings-search-flash) {
   overflow-clip-margin: 6px;
 }
+
+.auracode-custom-provider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-weak-base);
+}
+.auracode-custom-provider p {
+  overflow-wrap: anywhere;
+}
+.auracode-custom-provider-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}

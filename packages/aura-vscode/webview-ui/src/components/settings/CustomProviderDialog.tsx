@@ -267,14 +267,13 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
     // subscribe to unrelated store properties and cause re-render loops.
     const url = fetchURL().trim()
     const raw = fetchKey().trim()
-    const env = raw.match(/^\{env:([^}]+)\}$/)?.[1]?.trim()
-    const apiKey = raw && !env ? raw : undefined
+    const apiKey = raw || (apiTouched() ? "" : undefined)
     // When editing an existing provider with the key field untouched, the
     // webview has no key to send — keys are stripped before provider data
     // reaches it. Send the providerID so the extension can authenticate the
     // fetch with the stored key (#10139). Anything typed into the field
     // (a key or {env:VAR} syntax) takes precedence.
-    const providerID = !raw && props.existing ? props.existing.providerID : undefined
+    const providerID = !apiTouched() && !raw && props.existing ? props.existing.providerID : undefined
     const existing = new Set(form.models.map((m) => m.id.trim().toLowerCase()).filter(Boolean))
 
     const hdrs = form.headers
@@ -574,13 +573,13 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
             <div style={{ "font-size": "var(--aura-font-size-14)", color: "var(--text-base)" }}>
               {language.t("provider.custom.description.prefix")}
               <a
-                href="https://aura.ai/docs/ai-providers#custom-provider"
+                href="https://github.com/rmnrf/auracode-local#local-model-setup"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   vscode.postMessage({
                     type: "openExternal",
-                    url: "https://aura.ai/docs/ai-providers#custom-provider",
+                    url: "https://github.com/rmnrf/auracode-local#local-model-setup",
                   })
                 }}
               >
@@ -649,7 +648,8 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
             </div>
             <TextField
               label={language.t("provider.custom.field.baseURL.label")}
-              placeholder={language.t("provider.custom.field.baseURL.placeholder")}
+              placeholder="http://127.0.0.1:1234/v1"
+              description={language.t("settings.providers.local.url")}
               value={form.baseURL}
               onChange={(v) => {
                 setForm("baseURL", v)

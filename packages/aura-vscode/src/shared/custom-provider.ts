@@ -1,10 +1,11 @@
 import { z } from "zod"
+import { endpoint } from "@auracode/local-only"
 import { CUSTOM_PROVIDER_PACKAGE, CUSTOM_PROVIDER_PACKAGES, PROVIDER_ID_PATTERN } from "./provider-model"
 import type { CustomProviderPackage } from "./provider-model"
 
 const INVALID_PROVIDER_ID = "Invalid provider ID"
 const INVALID_ENV = "Invalid environment variable name"
-const INVALID_BASE_URL = "Base URL must start with http:// or https://"
+const INVALID_BASE_URL = "Use a local HTTP(S) endpoint on 127.0.0.1, localhost or [::1]"
 
 export const ProviderIDSchema = z.string().trim().regex(PROVIDER_ID_PATTERN, INVALID_PROVIDER_ID)
 export const EnvSchema = z
@@ -37,9 +38,19 @@ export const CustomProviderConfigSchema = z
           .string()
           .trim()
           .url()
-          .refine((value) => value.startsWith("http://") || value.startsWith("https://"), {
-            message: INVALID_BASE_URL,
-          }),
+          .refine(
+            (value) => {
+              try {
+                endpoint(value)
+                return true
+              } catch {
+                return false
+              }
+            },
+            {
+              message: INVALID_BASE_URL,
+            },
+          ),
         headers: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
       })
       .strict(),
@@ -132,7 +143,7 @@ export function normalizeCustomProviderConfig(
     name: config.name.trim(),
     ...(config.env ? { env: config.env.map((item) => item.trim()) } : {}),
     options: {
-      baseURL: config.options.baseURL.trim(),
+      baseURL: endpoint(config.options.baseURL.trim()),
       ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
     },
     models: Object.fromEntries(
@@ -221,5 +232,15 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
     }
   }
 
-  return { ...next, models: patched } as SanitizedProviderConfig
+  const oldOptions = isRecord(existing.options) ? existing.options : {}
+  const oldHeaders = isRecord(oldOptions.headers) ? oldOptions.headers : {}
+  const headers = { ...next.options.headers }
+  for (const key of Object.keys(oldHeaders)) {
+    if (!(key in headers)) (headers as Record<string, string | null>)[key] = null
+  }
+  return {
+    ...next,
+    options: { ...next.options, ...(Object.keys(headers).length ? { headers } : {}) },
+    models: patched,
+  } as SanitizedProviderConfig
 }

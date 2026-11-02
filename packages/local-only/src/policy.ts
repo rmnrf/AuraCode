@@ -18,12 +18,17 @@ export function endpoint(value: string): string {
   return url.toString().replace(/\/+$/, "")
 }
 
+export const LOCAL_ADAPTERS = ["@ai-sdk/openai-compatible", "@ai-sdk/openai", "@ai-sdk/anthropic"] as const
+
 type Provider = {
   npm?: string
   name?: string
   env?: string[]
   options?: Record<string, unknown>
-  models?: Record<string, { name?: string; limit?: { context?: number; output?: number } } | null>
+  models?: Record<
+    string,
+    { name?: string; limit?: { context?: number; output?: number }; [key: string]: unknown } | null
+  >
 }
 
 type Config = {
@@ -39,36 +44,55 @@ type Config = {
 
 /** Enforce policy after config merging, so project config cannot enable cloud models. */
 export function localConfig<T extends Config>(input: T): T {
-  const selected = input.provider?.local
-  const baseURL = endpoint(String(selected?.options?.baseURL ?? "http://127.0.0.1:1234/v1"))
-  const models = Object.fromEntries(
-    Object.entries(selected?.models ?? { "local-model": { name: "Local model" } }).map(([id, model]) => [
-      id,
-      {
-        name: model?.name ?? id,
-        tool_call: true,
-        limit: { context: model?.limit?.context ?? 32768, output: model?.limit?.output ?? 4096 },
-      },
-    ]),
+  const fallback: Record<string, Provider> = { local: {} }
+  const entries = Object.entries(input.provider ?? fallback)
+  const providers = Object.fromEntries(
+    entries.flatMap(([id, selected]) => {
+      if (!selected) return []
+      const npm =
+        LOCAL_ADAPTERS.find((item) => item === selected.npm) ?? (id === "local" ? LOCAL_ADAPTERS[0] : undefined)
+      if (!npm) return []
+      const baseURL = endpoint(String(selected.options?.baseURL ?? "http://127.0.0.1:1234/v1"))
+      const options: Record<string, unknown> = { ...selected.options, baseURL }
+      // Version 1.0.0 persisted this placeholder. It must not override a saved key.
+      if (options.apiKey === "local" || options.apiKey === "") delete options.apiKey
+      const models = Object.fromEntries(
+        Object.entries(selected.models ?? { "local-model": { name: "Local model" } }).flatMap(([key, model]) =>
+          model
+            ? [
+                [
+                  key,
+                  {
+                    ...model,
+                    name: model.name ?? key,
+                    tool_call: model.tool_call ?? true,
+                    limit: {
+                      ...model.limit,
+                      context: model.limit?.context ?? 32768,
+                      output: model.limit?.output ?? 4096,
+                    },
+                  },
+                ],
+              ]
+            : [],
+        ),
+      )
+      return [[id, { ...selected, name: selected.name ?? "Local OpenAI-compatible server", npm, options, models }]]
+    }),
   )
-  const first = Object.keys(models).at(0)
-  if (!first) throw new Error("Configure at least one model for the local provider")
-  const model = input.model?.startsWith("local/") && models[input.model.slice(6)] ? input.model : `local/${first}`
+  const disabled = input.disabled_providers ?? []
+  const models = Object.entries(providers)
+    .filter(([id]) => !disabled.includes(id))
+    .flatMap(([id, provider]) => Object.keys(provider.models).map((key) => `${id}/${key}`))
+  const model = input.model && models.includes(input.model) ? input.model : (models.at(0) ?? null)
+  const small = input.small_model && models.includes(input.small_model) ? input.small_model : model
   return {
     ...input,
     model,
-    small_model: model,
-    enabled_providers: ["local"],
-    disabled_providers: [],
-    provider: {
-      local: {
-        name: "Local OpenAI-compatible server",
-        npm: "@ai-sdk/openai-compatible",
-        env: [],
-        options: { baseURL, apiKey: "local" },
-        models,
-      },
-    },
+    small_model: small,
+    enabled_providers: Object.keys(providers),
+    disabled_providers: disabled,
+    provider: providers,
     plugin: [],
     plugin_origins: [],
     mcp: {},
