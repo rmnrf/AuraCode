@@ -247,7 +247,7 @@ export class AuraConnectionService {
 
   /**
    * Get server config (baseUrl + password). Returns null if not connected.
-   * Used by TelemetryProxy to POST events to the CLI server.
+   * Used by the local extension host to connect to the CLI server.
    */
   getServerConfig(): ServerConfig | null {
     return this.config

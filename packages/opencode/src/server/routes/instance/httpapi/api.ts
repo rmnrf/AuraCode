@@ -46,7 +46,6 @@ import { SandboxApi } from "@/auracode/server/httpapi/groups/sandbox"
 import { SessionHostApi } from "@/auracode/server/httpapi/groups/session-host"
 import { SessionImportApi } from "@/auracode/server/httpapi/groups/session-import"
 import { SuggestionApi } from "@/auracode/server/httpapi/groups/suggestion"
-import { TelemetryApi } from "@/auracode/server/httpapi/groups/telemetry"
 import { MemoryApi } from "@/auracode/server/httpapi/groups/memory" // auracode_change
 // auracode_change end
 import { makeApi } from "@opencode-ai/protocol/api"
@@ -119,7 +118,7 @@ export const InstanceHttpApi = HttpApi.make("opencode-instance")
   .addHttpApi(SessionHostApi)
   .addHttpApi(SessionImportApi)
   .addHttpApi(SuggestionApi)
-  .addHttpApi(TelemetryApi)
+
   .addHttpApi(MemoryApi)
   // auracode_change end
   .middleware(SchemaErrorMiddleware)

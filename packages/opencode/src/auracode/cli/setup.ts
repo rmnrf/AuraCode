@@ -1,6 +1,5 @@
 import type { Argv } from "yargs"
 import type { Auth } from "@/auth"
-import * as Log from "@opencode-ai/core/util/log"
 import { InstallationBuildKind, InstallationVersion } from "@opencode-ai/core/installation/version"
 import { AuraShutdown } from "@/auracode/cli/shutdown"
 import { createHelpCommand } from "@/auracode/help-command"
@@ -20,14 +19,12 @@ import {
   WorktreeCommand,
 } from "@/auracode/cli/lazy-aura-commands"
 
-const log = Log.create({ service: "auracode.cli" })
-
 // All Aura-specific CLI customization lives here so the shared upstream entrypoint
 // (src/index.ts) only needs a handful of thin call-sites behind auracode_change markers.
 // This keeps index.ts close to upstream and reduces merge conflicts on every sync.
 //
 // Startup cost note: this module is imported eagerly from src/index.ts, so its static
-// import graph must stay light. Heavy dependencies (telemetry, gateway auth migration,
+// import graph must stay light. Heavy dependencies (gateway auth migration,
 // AppRuntime, config, auth, session-export, JSON migration) are dynamically imported
 // inside the function that needs them, following the deferral pattern upstream applied
 // in opencode#30453. The registered command modules must follow the same rule: a light
@@ -90,18 +87,6 @@ export namespace AuraCli {
 
     const runtime = narrow ? await import("@/auracode/cli/bootstrap-runtime") : undefined
     const app = narrow ? undefined : await import("@/effect/app-runtime")
-    const cfg = runtime
-      ? await runtime.AuraCliBootstrapRuntime.getGlobal()
-      : await app!.AppRuntime.runPromise((await import("@/config/config")).Config.Service.use((c) => c.getGlobal()))
-
-    const { Global } = await import("@opencode-ai/core/global")
-    const { Telemetry } = await import("@auracode/aura-telemetry")
-    await Telemetry.init({
-      dataPath: Global.Path.data,
-      version: InstallationVersion,
-      enabled: cfg.experimental?.openTelemetry !== false,
-    })
-
     const { migrateLegacyAuraAuth } = gateway
     const getAuth = async () => {
       if (runtime) return runtime.AuraCliBootstrapRuntime.getAuth()
@@ -120,36 +105,15 @@ export namespace AuraCli {
       setAuth,
     )
 
-    const auth = await getAuth()
-    if (auth) {
-      const token = auth.type === "oauth" ? auth.access : auth.key
-      const account = auth.type === "oauth" ? auth.accountId : undefined
-      await Telemetry.updateIdentity(token, account)
-    }
 
-    Telemetry.trackCliStart()
-    // Overlap the event upload with command execution so exit is not delayed by
-    // a network round trip (#10242).
-    Telemetry.flushInBackground()
   }
 
   // Runs from the `finally` block on every exit path.
   export async function shutdown(): Promise<void> {
     if (info) return
-    const { Telemetry } = await import("@auracode/aura-telemetry")
-    const code = typeof process.exitCode === "number" ? process.exitCode : undefined
-    Telemetry.trackCliExit(code)
     const { SessionExport } = await import("@/auracode/session-export")
     try {
       await SessionExport.shutdown()
-      // Bound telemetry shutdown so an unreachable endpoint (offline, firewall,
-      // DNS adblock resolving the host to 0.0.0.0) cannot block process exit on
-      // short-lived commands like `aura --help` / `aura --version` (#9788).
-      try {
-        await Telemetry.shutdown(2000)
-      } catch (err) {
-        log.warn("telemetry shutdown failed", { err })
-      }
     } finally {
       await AuraShutdown.run()
       if (narrow) {

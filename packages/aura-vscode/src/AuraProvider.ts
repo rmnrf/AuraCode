@@ -24,12 +24,6 @@ import { saveImage } from "./aura-provider/save-image"
 import { handleEditorAction } from "./aura-provider/editor-actions"
 import { exportTranscript } from "./aura-provider/export-transcript"
 import {
-  TelemetryProxy,
-  type TelemetryPropertiesProvider,
-  pushTelemetryState,
-  watchTelemetryState,
-} from "./services/telemetry"
-import {
   sessionToWebview,
   indexProvidersById,
   filterVisibleAgents,
@@ -419,7 +413,7 @@ function withGlobalSpeechToTextMessage(message: unknown): unknown {
   return { ...msg, config: withGlobalSpeechToText(msg.config as SpeechToTextConfig, global) }
 }
 
-export class AuraProvider implements vscode.WebviewViewProvider, TelemetryPropertiesProvider {
+export class AuraProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "aura-code.SidebarProvider"
   private readonly instanceId = crypto.randomUUID()
 
@@ -558,7 +552,6 @@ export class AuraProvider implements vscode.WebviewViewProvider, TelemetryProper
   private shortcutHintsConfigDisposable: vscode.Disposable | null = null
   private workspaceFoldersDisposable: vscode.Disposable | null = null
   private shortcutContextDisposable: vscode.Disposable | null = null
-  private telemetryStateDisposable: vscode.Disposable | null = null
   private viewStateDisposable: vscode.Disposable | null = null
   private visibilityDisposable: vscode.Disposable | null = null
   private view: vscode.WebviewView | undefined
@@ -634,7 +627,6 @@ export class AuraProvider implements vscode.WebviewViewProvider, TelemetryProper
       }
       this.postMessage({ type: "mcpRemovalState", name: event.name, removing: event.phase === "removing" })
     })
-    TelemetryProxy.getInstance().setProvider(this)
     this.latch = watchRestore({
       focused: () => vscode.window.state.focused,
       onChange: (listener) => vscode.window.onDidChangeWindowState(listener),
@@ -763,17 +755,6 @@ export class AuraProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.documentViewerProvider = provider
   }
 
-  getTelemetryProperties(): Record<string, unknown> {
-    return {
-      appName: "aura-code",
-      appVersion: this.extensionVersion,
-      platform: "vscode",
-      editorName: vscode.env.appName,
-      vscodeVersion: vscode.version,
-      machineId: vscode.env.machineId,
-      vscodeIsTelemetryEnabled: vscode.env.isTelemetryEnabled,
-    }
-  }
 
   /**
    * Convenience getter that returns the shared SDK AuraClient or null if not yet connected.
@@ -876,7 +857,6 @@ export class AuraProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     // Always push connection state first so the UI can render appropriately.
     this.postConnectionState()
-    pushTelemetryState((m) => this.postMessage(m))
 
     // Re-send ready so the webview can recover after refresh.
     if (serverInfo) {
@@ -1268,8 +1248,6 @@ export class AuraProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.workspaceFoldersDisposable = vscode.workspace.onDidChangeWorkspaceFolders(() => this.sendWorkspaceScope())
     this.shortcutContextDisposable?.dispose()
     this.shortcutContextDisposable = watchShortcutContext(this.extensionContext, (msg) => this.postMessage(msg))
-    this.telemetryStateDisposable?.dispose()
-    this.telemetryStateDisposable = watchTelemetryState((msg) => this.postMessage(msg))
     this.webviewMessageDisposable = webview.onDidReceiveMessage(async (message) => {
       if (this.acknowledge(message)) return
       const intercepted = await interceptMessage(message, {
@@ -1711,7 +1689,7 @@ export class AuraProvider implements vscode.WebviewViewProvider, TelemetryProper
           await resetReadNotifications(this.notificationsContext())
           break
         case "telemetry":
-          TelemetryProxy.capture(message.event, message.properties)
+          // Ignore legacy webview events without collecting or transmitting them.
           break
         case "persistVariant": {
           const stored = this.extensionContext?.globalState.get<Record<string, string>>("variantSelections") ?? {}
@@ -6356,7 +6334,6 @@ export class AuraProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.shortcutHintsConfigDisposable?.dispose()
     this.workspaceFoldersDisposable?.dispose()
     this.shortcutContextDisposable?.dispose()
-    this.telemetryStateDisposable?.dispose()
     this.autoApproveBridge?.dispose()
     this.visibleTaskStreams.clear()
     this.inputs.dispose()
