@@ -1,6 +1,10 @@
 name: Publish verified AuraCode VSIX
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-vsix.yml
 permissions:
   actions: read
   contents: write
@@ -9,29 +13,42 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download the successful Windows build
+        uses: actions/download-artifact@v4
         with:
           name: auracode-1.0.1-win32-x64
-          run-id: 41494206998
+          run-id: 41504004367
           github-token: ${{ github.token }}
           path: verified
-      - name: Verify the audited package and publish it
+      - name: Verify and publish the updated icons release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo '773a44ce34582c66a35b1acfc9435c6c0a2bb229bdae8fb88fb073ef4eee6ad2  verified/auracode-1.0.1-win32-x64.vsix' | sha256sum --check
+          echo 'a6379276a8ae3c413e9b148b7462a5381582005aaf61e513e82fb3fa5f556147  verified/auracode-1.0.1-win32-x64.vsix' | sha256sum --check
+          if gh release view v1.0.1-icons --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release v1.0.1-icons is already published; not overwriting assets.'
+            exit 0
+          fi
           cat > notes.md <<'EOF'
-          Windows x64 VS Code extension. Requires VS Code 1.105.1 or newer.
+          AuraCode 1.0.1 for Windows x64 — updated branding and icons.
 
-          Restore the full Custom provider editor: provider ID and name, API key or environment reference, custom headers, model discovery, multiple models, reasoning and image capabilities, editing, enabling, disabling and deletion. OpenAI Compatible, OpenAI Responses and Anthropic Messages protocols are available for local servers.
+          This is a branded rebuild of version 1.0.1, published as a separate release to preserve the original v1.0.1 package and its audited checksum.
 
-          Configure your local OpenAI-compatible server in Settings → Providers. Only 127.0.0.1, localhost and [::1] endpoints are accepted; HTTP redirects are refused. Use the exact model ID exposed by your server.
+          - New full-color icon for Marketplace and the Welcome to Aura screen.
+          - Simplified light and dark SVG artwork for VS Code Activity Bar.
+          - Fix the SolidJS SVG type-check error from the previous build.
+          - Local AI provider support and privacy restrictions remain unchanged.
 
-          Event telemetry and cloud session uploads are disabled. Cloud model providers and external plugins cannot be enabled through project configuration. Mandatory MIT attribution is preserved in the packaged license.
+          Requires VS Code 1.105.1 or newer on Windows x64.
+          Validation: Windows packaging, backend/extension type checks, ESLint, local inference smoke test and packaged branding audit passed.
+          Installation and display of icons in the user's VS Code are not yet tested.
 
-          Validation: backend and extension type checks, ESLint, native Windows compilation, local HTTP/redirect tests, custom form and authenticated model discovery tests, disabled telemetry tests, compiled agent streaming inference with a stored API key and custom header against a loopback test server, and archive branding audit passed. Installation in the user's VS Code and inference with the user's own model remain to be checked.
-
-          Source: 9cd2bad8b9b165e0d132f850598153098331d61c
-          SHA256: 773a44ce34582c66a35b1acfc9435c6c0a2bb229bdae8fb88fb073ef4eee6ad2
+          Source commit: 5763bf3309823bfe3c24953d166720b51f070056
+          Build run: 41504004367
+          SHA256: a6379276a8ae3c413e9b148b7462a5381582005aaf61e513e82fb3fa5f556147
           EOF
-          gh release create v1.0.1 verified/auracode-1.0.1-win32-x64.vsix --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'AuraCode 1.0.1 — Windows x64' --notes-file notes.md
+          gh release create v1.0.1-icons verified/auracode-1.0.1-win32-x64.vsix \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 5763bf3309823bfe3c24953d166720b51f070056 \
+            --title 'AuraCode 1.0.1 — Updated Icons (Windows x64)' \
+            --notes-file notes.md
