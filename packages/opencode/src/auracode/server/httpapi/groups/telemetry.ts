@@ -39,7 +39,7 @@ export const TelemetryApi = HttpApi.make("telemetry")
           OpenApi.annotations({
             identifier: "telemetry.capture",
             summary: "Capture telemetry event",
-            description: "Forward a telemetry event to PostHog via aura-telemetry.",
+            description: "Disabled compatibility endpoint. Events are discarded without storage or transmission.",
           }),
         ),
         HttpApiEndpoint.post("setEnabled", TelemetryPaths.setEnabled, {
@@ -50,9 +50,9 @@ export const TelemetryApi = HttpApi.make("telemetry")
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "telemetry.setEnabled",
-            summary: "Set PostHog telemetry enabled state",
+            summary: "Disabled telemetry compatibility endpoint",
             description:
-              "Update the PostHog client's opt-in/out state at runtime. The CLI reads AURA_TELEMETRY_LEVEL once at spawn — this route lets clients (e.g. the VS Code extension) propagate runtime telemetry consent changes.",
+              "Telemetry is permanently disabled. This endpoint cannot enable collection or transmission.",
           }),
         ),
       )
