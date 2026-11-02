@@ -1,0 +1,5 @@
+/* Aura Inline Input overrides */
+
+[data-component="inline-input"] {
+  font-size: var(--aura-font-size-13);
+}

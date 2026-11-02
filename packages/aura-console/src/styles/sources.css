@@ -1,0 +1,36 @@
+.aura-console .table {
+  overflow-x: auto;
+  border: 1px solid var(--border-weak-base);
+  border-radius: var(--radius-lg);
+}
+
+.aura-console .thead,
+.aura-console .tr {
+  display: grid;
+  grid-template-columns: 5rem 7rem 12rem minmax(12rem, 1fr) 6rem;
+  min-width: 48rem;
+}
+
+.aura-console .thead {
+  background: var(--surface-raised-base);
+  color: var(--text-weaker);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.aura-console .thead span,
+.aura-console .tr span {
+  overflow: hidden;
+  padding: 0.7rem 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aura-console .tr + .tr {
+  border-top: 1px solid var(--border-weak-base);
+}
+
+.aura-console .tr span:first-child {
+  color: var(--text-weaker);
+}

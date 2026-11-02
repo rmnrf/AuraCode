@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@tsconfig/bun/tsconfig.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "@opentui/solid",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "noUncheckedIndexedAccess": false,
+    // auracode_change - resolve Aura integrations retained during upstream's standalone TUI extraction
+    "paths": {
+      "@/*": ["../opencode/src/*"],
+      "@tui/*": ["./src/*"]
+    }
+  },
+  // auracode_change - include ambient declarations used by retained Aura imports from opencode
+  "include": ["src", "test", "../opencode/src/*.d.ts"]
+}

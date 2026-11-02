@@ -1,0 +1,78 @@
+.husky/_
+.DS_Store
+.secrets/
+node_modules
+.worktrees
+.sst
+.env
+.env.local
+.idea/*
+!.idea/gradle.xml
+!.idea/.run
+.idea/*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+# use vscode workspaces with peacock to have many vscodes with the same repo:
+*.code-workspace
+.codex
+*~
+playground
+tmp
+dist
+ts-dist
+storybook-static
+.turbo
+**/.serena
+.serena/
+**/.omo
+.omo/
+/result
+refs
+Session.vim
+/opencode.json
+a.out
+target
+.scripts
+.direnv/
+packages/aura-jetbrains/build-tasks/.gradle/
+
+# Local dev files
+opencode-dev
+.aura-dev/
+UPCOMING_CHANGELOG.md
+logs/
+*.bun-build
+
+# Telemetry ID
+telemetry-id
+tsconfig.tsbuildinfo
+
+# Aura
+.aura/.gitignore
+.aura/package.json
+.aura/package-lock.json
+.aura/pnpm-lock.yaml
+.aura/bun.lock
+.aura/yarn.lock
+.aura/node_modules
+.aura/plans/*upstream-merge-report-*.md
+**/.aura/jetbrains.json
+.auracode/.gitignore
+.auracode/package.json
+.auracode/package-lock.json
+.auracode/pnpm-lock.yaml
+.auracode/bun.lock
+.auracode/yarn.lock
+.auracode/node_modules
+
+# Runtime-generated per-directory TUI config (e.g. written by `PATCH /tui/config`
+# during local testing); should never be committed.
+packages/*/.aura/tui.json
+packages/*/.aura/tui.jsonc
+
+# Test Artifacts
+packages/app/.artifacts/
+packages/opencode/.artifacts/

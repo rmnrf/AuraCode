@@ -1,0 +1,6 @@
+/* Same tokens as the docs site. Yellow is a brand fill, not a warning color. */
+
+html[data-theme="aura-vscode"] {
+  --aura-yellow: #ffdd00;
+  --aura-yellow-hover: #edcd00;
+}

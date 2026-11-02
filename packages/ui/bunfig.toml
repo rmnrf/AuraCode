@@ -1,0 +1,3 @@
+# auracode_change - new file
+[test]
+preload = ["./test/solid-jsx.ts"]

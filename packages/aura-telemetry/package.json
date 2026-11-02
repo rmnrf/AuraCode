@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@auracode/aura-telemetry",
+  "version": "7.8.25",
+  "type": "module",
+  "license": "MIT",
+  "description": "Disabled compatibility hooks; no event collection or transport",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "build": "tsc",
+    "test": "bun test",
+    "test:ci": "mkdir -p .artifacts/unit && bun test --reporter=junit --reporter-outfile=.artifacts/unit/junit.xml"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:"
+  },
+  "peerDependencies": {}
+}

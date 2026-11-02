@@ -1,0 +1,12 @@
+[data-component="spinner"] {
+  color: inherit;
+  flex-shrink: 0;
+  width: 18px;
+  aspect-ratio: 1;
+}
+
+/* auracode_change start */
+[data-component="spinner"][data-paused] > * {
+  animation: none !important;
+}
+/* auracode_change end */

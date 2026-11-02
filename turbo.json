@@ -1,0 +1,78 @@
+{
+  "$schema": "https://v2-8-13.turborepo.dev/schema.json",
+  "globalEnv": ["CI", "AURA_DISABLE_SHARE"],
+  "globalPassThroughEnv": ["CI", "AURA_DISABLE_SHARE"],
+  "tasks": {
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "@auracode/cli#build": {
+      "dependsOn": ["@auracode/sdk#build"],
+      "outputs": ["dist/**"]
+    },
+    "@auracode/cli#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "passThroughEnv": ["*"]
+    },
+    "test:ci": {
+      "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    },
+    "@opencode-ai/core#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@opencode-ai/function#test": {
+      "outputs": []
+    },
+    "@auracode/cli#test:ci": {
+      "dependsOn": ["^build"],
+      "env": ["AURA_TEST_PROFILE", "AURA_TEST_SHARD"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/.github/workflows/test.yml"],
+      "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    },
+    "@auracode/cli#test:httpapi": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": [],
+      "passThroughEnv": ["*"]
+    },
+    "@auracode/aura-gateway#test:ci": {
+      "outputs": [".artifacts/unit/junit.xml"]
+    },
+    "@auracode/aura-docs#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**"],
+      "env": ["POSTHOG_API_KEY", "FREE_TIER_AMOUNT", "NEXT_PUBLIC_POSTHOG_KEY", "NEXT_PUBLIC_POSTHOG_HOST"]
+    },
+    "@auracode/aura-jetbrains#build": {
+      "dependsOn": ["@auracode/cli#build"],
+      "outputs": ["build/distributions/**"]
+    },
+    "@auracode/aura-jetbrains#typecheck": {
+      "outputs": []
+    },
+    "@auracode/aura-jetbrains#test:ci": {
+      "outputs": [".artifacts/unit/junit.xml"]
+    },
+    "@opencode-ai/ui#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@opencode-ai/session-ui#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@opencode-ai/ui#test:ci": {
+      "dependsOn": ["^build"],
+      "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    }
+  }
+}

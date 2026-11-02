@@ -1,0 +1,44 @@
+context:
+  version: ${{ env.get("AURA_VERSION") }}
+
+package:
+  name: aura-cli
+  version: ${{ version }}
+
+# The archive for the current target platform is selected by the caller
+# (see the `Build conda package` step in .github/workflows/publish.yml),
+# which sets AURA_ARCHIVE/AURA_SHA256/AURA_TAG and invokes
+# `rattler-build build --target-platform <platform>` once per platform.
+# This keeps the recipe itself platform-agnostic. AURA_TAG is the real git
+# tag (e.g. v1.2.3 or v0.0.0-rc-202609221200); AURA_VERSION is the
+# conda-safe package version (git tag without the leading `v`, dashes
+# replaced by dots).
+source:
+  url: https://github.com/Aura-Org/auracode/releases/download/${{ env.get("AURA_TAG") }}/${{ env.get("AURA_ARCHIVE") }}
+  sha256: ${{ env.get("AURA_SHA256") }}
+
+build:
+  number: 0
+  script:
+    file: build.sh
+    interpreter: bash
+  # The archives contain prebuilt binaries that need no prefix relocation.
+  # Relinking would also require platform tools (install_name_tool for
+  # Mach-O) that do not exist on the Linux runner cross-building osx-*.
+  dynamic_linking:
+    binary_relocation: false
+
+requirements:
+  run:
+    - ripgrep
+
+about:
+  homepage: https://aura.ai
+  repository: https://github.com/Aura-Org/auracode
+  documentation: https://aura.ai/docs
+  license: ${{ "MIT AND LGPL-2.0-or-later" if linux else "MIT" }}
+  summary: The AI coding agent built for the terminal.
+
+extra:
+  recipe-maintainers:
+    - Aura-Org

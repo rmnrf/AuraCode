@@ -1,0 +1,11 @@
+{
+  "name": "@auracode/local-only",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/policy.ts",
+    "./fetch": "./src/fetch.ts",
+    "./bootstrap": "./src/bootstrap.ts"
+  }
+}
