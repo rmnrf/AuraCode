@@ -1,4 +1,22 @@
-# AuraCode 1.0.0 validation
+# AuraCode 1.0.1 validation
+
+Built on November 2, 2026 from source `9cd2bad8b9b165e0d132f850598153098331d61c`.
+
+Build: https://github.com/rmnrf/auracode-local/actions/runs/41494206998
+
+- Complete upstream Custom provider dialog restored, including API keys, headers, model discovery, multiple models, reasoning/image settings and protocol selection.
+- Effective config preserves custom IDs, credentials, environment references, headers, model limits, modalities and variants while enforcing loopback endpoints.
+- Local policy/HTTP tests: 4 passed. Disabled telemetry: 1 passed. Custom form and authenticated model discovery: 2 passed.
+- Backend, host and webview type checks, ESLint, SDK generation and native Windows compilation: passed.
+- Compiled agent streaming inference with a stored API key and custom HTTP header against a local protocol test server: passed.
+- Package identity and whole-archive branding/analytics scan, including the executable: passed.
+
+Artifact: `auracode-1.0.1-win32-x64.vsix`, 144,709,313 bytes.
+SHA256: `773a44ce34582c66a35b1acfc9435c6c0a2bb229bdae8fb88fb073ef4eee6ad2`.
+
+The compiled inference smoke test exercises OpenAI Compatible. Responses and Anthropic protocol adapters are compiled and configurable; their protocol exchanges have not been exercised against real model servers. Installation/UI interaction in the user's VS Code and inference quality with the user's model remain untested.
+
+## Previous release: AuraCode 1.0.0
 
 The Windows x64 VSIX was built successfully on November 2, 2026 from source commit `72adc596f869c10181bea3d49f53671166b63bee`.
 
