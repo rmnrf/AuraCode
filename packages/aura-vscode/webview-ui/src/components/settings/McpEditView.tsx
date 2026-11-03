@@ -46,6 +46,8 @@ const McpEditView: Component<Props> = (props) => {
 
   const [envKey, setEnvKey] = createSignal("")
   const [envVal, setEnvVal] = createSignal("")
+  const [headerKey, setHeaderKey] = createSignal("")
+  const [headerVal, setHeaderVal] = createSignal("")
   const [mode, setMode] = createSignal<OauthMode>(oauthMode(cfg().oauth))
   const [clientId, setClientId] = createSignal(initialOauth.clientId)
   const [clientSecret, setClientSecret] = createSignal(initialOauth.clientSecret)
@@ -87,6 +89,20 @@ const McpEditView: Component<Props> = (props) => {
   }
 
   const env = createMemo(() => Object.entries(cfg().environment ?? cfg().env ?? {}))
+  const headers = createMemo(() => Object.entries(cfg().headers ?? {}))
+  const addHeader = () => {
+    const key = headerKey().trim()
+    const val = headerVal().trim()
+    if (!/^[A-Za-z0-9-]+$/.test(key) || !val) return
+    update({ headers: { ...(cfg().headers ?? {}), [key]: val } })
+    setHeaderKey("")
+    setHeaderVal("")
+  }
+  const removeHeader = (key: string) => {
+    const next = { ...(cfg().headers ?? {}) }
+    delete next[key]
+    update({ headers: next })
+  }
 
   const addEnv = () => {
     const key = envKey().trim()
@@ -209,6 +225,30 @@ const McpEditView: Component<Props> = (props) => {
             placeholder={language.t("settings.agentBehaviour.addMcp.url.placeholder")}
             onChange={(val) => update({ url: val.trim() || undefined })}
           />
+        </Card>
+
+        <Card style={{ "margin-bottom": "12px" }}>
+          <div data-slot="settings-row-label-title" style={{ "margin-bottom": "6px" }}>Custom HTTP headers</div>
+          <p style={{ "font-size": "var(--aura-font-size-11)", color: "var(--text-weak-base)", margin: "4px 0 10px" }}>
+            Use headers to authenticate with trusted MCP servers. Secrets in JSON config are stored as plain text.
+          </p>
+          <div style={{ display: "flex", gap: "8px", "align-items": "flex-end", "flex-wrap": "wrap" }}>
+            <div style={{ flex: 1, "min-width": "110px" }}>
+              <TextField label="Header" placeholder="Authorization" value={headerKey()} onChange={setHeaderKey} />
+            </div>
+            <div style={{ flex: 2, "min-width": "150px" }}>
+              <TextField type="password" label="Value" placeholder="Bearer ..." value={headerVal()} onChange={setHeaderVal} />
+            </div>
+            <Button variant="secondary" onClick={addHeader}>Add</Button>
+          </div>
+          <For each={headers()}>
+            {([key]) => (
+              <div style={{ display: "flex", "justify-content": "space-between", "align-items": "center", padding: "6px 0" }}>
+                <span style={{ "font-size": "var(--aura-font-size-12)", "font-family": "monospace" }}>{key}: ••••••••</span>
+                <IconButton icon="close" size="small" variant="ghost" onClick={() => removeHeader(key)} />
+              </div>
+            )}
+          </For>
         </Card>
 
         {/* OAuth configuration (remote servers only) */}
