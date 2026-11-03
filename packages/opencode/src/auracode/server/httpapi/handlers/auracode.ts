@@ -17,7 +17,6 @@ import * as AuraSkill from "@/auracode/skill-remove"
 import { Agent } from "@/agent/agent"
 import { Command } from "@/command"
 import { Config } from "@/config/config"
-import { MCP } from "@/mcp"
 import { WorkspaceRef } from "@/effect/instance-ref"
 import { InstanceState } from "@/effect/instance-state"
 import { HeapSnapshot } from "@/auracode/cli/heap-snapshot"
@@ -26,15 +25,9 @@ import { AgentManager } from "@/auracode/agent-manager/service"
 import type { RequestID as NotebookRequestID } from "@/auracode/notebook/protocol"
 import { Notebook } from "@/auracode/notebook/service"
 import { ModelUsage } from "@/auracode/session/model-usage"
-import * as MarketplaceApi from "@/auracode/marketplace/api"
-import * as MarketplaceDetection from "@/auracode/marketplace/detection"
-import * as MarketplaceInstaller from "@/auracode/marketplace/installer"
-import * as MarketplaceRelevance from "@/auracode/marketplace/relevance"
-import { Ripgrep } from "@opencode-ai/core/ripgrep"
 import {
   MarketplaceInstallPayload,
   MarketplaceRemovePayload,
-  type MarketplaceRemoveResult,
 } from "@/auracode/marketplace/schema"
 import { ProviderUsage } from "@opencode-ai/core/auracode/provider-usage"
 import { Location } from "@opencode-ai/core/location"
@@ -85,9 +78,7 @@ export const auracodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "auracode"
     const agents = yield* Agent.Service
     const commands = yield* Command.Service
     const skills = yield* Skill.Service
-    const ripgrep = yield* Ripgrep.Service
     const config = yield* Config.Service
-    const mcp = yield* MCP.Service
     const store = yield* InstanceStore.Service
     const manager = yield* AgentManager.Service
     const notebook = yield* Notebook.Service
@@ -292,120 +283,22 @@ export const auracodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "auracode"
       return true
     })
 
+    // Compatibility endpoints remain registered, but the Marketplace feature is permanently disabled.
+    // No catalog fetch, external install, or removal via this API is possible.
     const marketplaceList = Effect.fn("AuracodeHttpApi.marketplaceList")(function* () {
-      const started = Date.now()
-      const instance = yield* InstanceState.context
-      yield* Effect.logInfo("marketplace request", { endpoint: "list", directory: instance.directory })
-      const items = yield* Effect.promise(() => MarketplaceApi.fetchAll())
-      const entries = yield* skills.all()
-      const installed = yield* Effect.promise(() =>
-        MarketplaceDetection.detect({ directory: instance.directory, worktree: instance.worktree, skills: entries }),
-      )
-      const scanned = Date.now()
-      const filenames = yield* MarketplaceRelevance.detect({
-        ripgrep,
-        directory: instance.directory,
-        items: items.items,
-      })
-      yield* Effect.logInfo("marketplace request complete", {
-        endpoint: "list",
-        directory: instance.directory,
-        outcome: "success",
-        count: items.items.length,
-        errors: items.errors.length,
-        filenames: filenames.length,
-        relevanceMs: Date.now() - scanned,
-        durationMs: Date.now() - started,
-      })
-      return {
-        items: items.items,
-        installed,
-        filenames,
-        ...(items.errors.length > 0 ? { errors: items.errors } : {}),
-      }
+      return { items: [], installed: { project: {}, global: {} }, filenames: [] }
     })
 
     const marketplaceInstall = Effect.fn("AuracodeHttpApi.marketplaceInstall")(function* (ctx: {
       payload: typeof MarketplaceInstallPayload.Type
     }) {
-      const started = Date.now()
-      const instance = yield* InstanceState.context
-      const target = ctx.payload.target ?? "project"
-      yield* Effect.logInfo("marketplace request", {
-        endpoint: "install",
-        directory: instance.directory,
-        itemId: ctx.payload.item.id,
-        itemType: ctx.payload.item.type,
-        target,
-        parameterKeys: Object.keys(ctx.payload.parameters ?? {}),
-        parameterCount: Object.keys(ctx.payload.parameters ?? {}).length,
-      })
-      const result = yield* MarketplaceInstaller.install(
-        {
-          config,
-          agents,
-          skills,
-          mcp: { remove: mcp.remove }, // auracode_change
-          directory: instance.directory,
-          worktree: instance.worktree,
-          vcs: instance.project.vcs,
-        },
-        ctx.payload,
-      )
-      // Plugin and MCP bundle writes can partially succeed, including on a failed request.
-      if (result.success || ctx.payload.item.type === "plugin" || ctx.payload.item.type === "mcp")
-        yield* store.dispose(instance)
-      yield* Effect.logInfo("marketplace request complete", {
-        endpoint: "install",
-        directory: instance.directory,
-        itemId: ctx.payload.item.id,
-        itemType: ctx.payload.item.type,
-        target,
-        outcome: result.success ? "success" : "failure",
-        error: result.error,
-        durationMs: Date.now() - started,
-      })
-      return result
+      return { success: false, slug: ctx.payload.item.id, error: "Marketplace is disabled in AuraCode" }
     })
 
     const marketplaceRemove = Effect.fn("AuracodeHttpApi.marketplaceRemove")(function* (ctx: {
       payload: typeof MarketplaceRemovePayload.Type
     }) {
-      const started = Date.now()
-      const instance = yield* InstanceState.context
-      yield* Effect.logInfo("marketplace request", {
-        endpoint: "remove",
-        directory: instance.directory,
-        itemId: ctx.payload.item.id,
-        itemType: ctx.payload.item.type,
-        scope: ctx.payload.scope,
-      })
-      const result: MarketplaceRemoveResult = yield* MarketplaceInstaller.remove(
-        {
-          config,
-          agents,
-          skills,
-          mcp: { remove: mcp.remove }, // auracode_change
-          directory: instance.directory,
-          worktree: instance.worktree,
-          vcs: instance.project.vcs,
-        },
-        ctx.payload.item,
-        ctx.payload.scope,
-      )
-      if (result.success || ctx.payload.item.type === "plugin" || ctx.payload.item.type === "mcp")
-        yield* store.dispose(instance)
-      yield* Effect.logInfo("marketplace request complete", {
-        endpoint: "remove",
-        directory: instance.directory,
-        itemId: ctx.payload.item.id,
-        itemType: ctx.payload.item.type,
-        scope: ctx.payload.scope,
-        outcome: result.success ? "success" : "failure",
-        error: result.error,
-        durationMs: Date.now() - started,
-      })
-      return result
+      return { success: false, slug: ctx.payload.item.id, error: "Marketplace is disabled in AuraCode" }
     })
 
     const removeSnapshot = Effect.fn("AuracodeHttpApi.removeSnapshot")(function* (ctx: {
