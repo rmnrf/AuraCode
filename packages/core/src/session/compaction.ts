@@ -179,8 +179,12 @@ export const make = (dependencies: Dependencies) => {
     const context = input.model.route.defaults.limits?.context
     if (context === undefined || context <= 0) return false
     const output = input.request.generation?.maxTokens ?? input.model.route.defaults.limits?.output ?? 0
-    const selected = select(input.entries, config.tokens)
-    const previousSummary = input.entries.find((entry) => entry.message.type === "compaction")?.message
+    // A prior checkpoint already summarizes older turns. Re-compact only the
+    // messages after the latest checkpoint and carry its retained tail forward.
+    const checkpointIndex = input.entries.findLastIndex((entry) => entry.message.type === "compaction")
+    const previousSummary = checkpointIndex < 0 ? undefined : input.entries[checkpointIndex]?.message
+    const recentEntries = checkpointIndex < 0 ? input.entries : input.entries.slice(checkpointIndex + 1)
+    const selected = select(recentEntries, config.tokens)
     if (!selected || (selected.head.length === 0 && previousSummary?.type !== "compaction")) return false
     const summaryPrompt = buildPrompt({
       previousSummary: previousSummary?.type === "compaction" ? previousSummary.summary : undefined,
