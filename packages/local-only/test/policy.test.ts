@@ -73,6 +73,28 @@ test("project config and model overrides cannot enable cloud providers or plugin
   assert.throws(() => localURL("https://unapproved.example.com/private"), /only permits/)
 })
 
+test("explicit global/project MCP definitions survive while unknown and unapproved transports are blocked", () => {
+  const config = localConfig({
+    mcp: {
+      files: { type: "local", command: ["node", "server.js"], enabled: true, environment: { HOME_DIR: "/tmp" } },
+      docs: { type: "remote", url: "https://mcp.example.com/mcp", enabled: true },
+      pending: { type: "local", command: ["node", "pending.js"] },
+      bad: { type: "remote", url: "http://public.example.com/mcp", enabled: true },
+      malformed: { command: ["sh", "-c", "echo unsafe"], enabled: true },
+    },
+  })
+  assert.deepEqual(config.mcp.files, {
+    type: "local", command: ["node", "server.js"], enabled: true, environment: { HOME_DIR: "/tmp" },
+  })
+  assert.equal(config.mcp.docs.url, "https://mcp.example.com/mcp")
+  assert.equal(config.mcp.pending.enabled, false)
+  assert.deepEqual(Object.keys(config.mcp), ["files", "docs", "pending"])
+  assert.equal(localURL("https://mcp.example.com/mcp").origin, "https://mcp.example.com")
+  assert.throws(() => localURL("https://unapproved.example.com/mcp"), /only permits/)
+  localConfig({ mcp: {} })
+  assert.throws(() => localURL("https://mcp.example.com/mcp"), /only permits/)
+})
+
 test("custom IDs, protocols, credentials and model capabilities survive effective config", () => {
   const models = {
     vision: {

@@ -121,7 +121,46 @@ export function localConfig<T extends Config>(input: T): T {
       return [[id, { ...selected, name: selected.name ?? "Local OpenAI-compatible server", npm, options, models }]]
     }),
   )
-  configureProviderOrigins(Object.values(providers).map((provider) => String(provider.options.baseURL)))
+  const mcp = Object.fromEntries(
+    Object.entries(input.mcp ?? {}).flatMap(([name, value]) => {
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name) || !value || typeof value !== "object" || Array.isArray(value))
+        return []
+      const server = value as Record<string, unknown>
+      const enabled = server.enabled === true // An explicit opt-in is required before executing commands.
+      const timeout = typeof server.timeout === "number" && Number.isSafeInteger(server.timeout) &&
+        server.timeout > 0 ? server.timeout : undefined
+      if (server.type === "local") {
+        if (!Array.isArray(server.command) || server.command.length === 0 ||
+            !server.command.every((part) => typeof part === "string" && part.length > 0)) return []
+        const environment = server.environment
+        const vars = environment && typeof environment === "object" && !Array.isArray(environment) &&
+          Object.entries(environment).every(([key, val]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && typeof val === "string")
+            ? environment : undefined
+        return [[name, {
+          type: "local", command: server.command, ...(vars ? { environment: vars } : {}),
+          ...(timeout ? { timeout } : {}), enabled,
+        }]]
+      }
+      if (server.type === "remote" && typeof server.url === "string") {
+        let url: string
+        try { url = providerEndpoint(server.url) } catch { return [] }
+        const headers = server.headers
+        const safeHeaders = headers && typeof headers === "object" && !Array.isArray(headers) &&
+          Object.entries(headers).every(([key, val]) => /^[A-Za-z0-9-]+$/.test(key) && typeof val === "string")
+          ? headers : undefined
+        return [[name, {
+          type: "remote", url, ...(safeHeaders ? { headers: safeHeaders } : {}),
+          ...(server.oauth === false ? { oauth: false } : {}),
+          ...(timeout ? { timeout } : {}), enabled,
+        }]]
+      }
+      return []
+    }),
+  )
+  configureProviderOrigins([
+    ...Object.values(providers).map((provider) => String(provider.options.baseURL)),
+    ...Object.values(mcp).flatMap((server) => server.type === "remote" && server.enabled ? [server.url] : []),
+  ])
   const disabled = input.disabled_providers ?? []
   const models = Object.entries(providers)
     .filter(([id]) => !disabled.includes(id))
@@ -137,7 +176,7 @@ export function localConfig<T extends Config>(input: T): T {
     provider: providers,
     plugin: [],
     plugin_origins: [],
-    mcp: {},
+    mcp,
     share: "disabled",
     autoupdate: false,
     tools: { webfetch: false, websearch: false, codesearch: false },
