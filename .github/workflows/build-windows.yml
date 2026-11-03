@@ -54,6 +54,9 @@ jobs:
         run: bun install
       - name: Verify the local-only boundary
         run: node --experimental-strip-types --test packages/local-only/test/policy.test.ts
+      - name: Verify incremental context compaction
+        working-directory: packages/opencode
+        run: bun test test/session/compaction-history.test.ts
       - name: Verify telemetry stays disabled
         run: node --experimental-transform-types --test packages/aura-telemetry/src/__tests__/privacy.test.ts
       - name: Verify custom provider forms and authenticated model discovery
