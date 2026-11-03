@@ -1,5 +1,5 @@
 /**
- * Renders New Task, History, Agent Manager, Marketplace, Profile, and
+ * Renders New Task, History, Agent Manager, Profile, and
  * Settings inside the webview, as a fallback for Cursor only (see isCursorHost()
  * in src/utils.ts). Cursor's Secondary Side Bar support is unreliable for
  * extension-contributed `view/title` toolbars, which render outside the webview
@@ -30,14 +30,13 @@ export const SidebarTopBar: Component<SidebarTopBarProps> = (props) => {
   const vscode = useVSCode()
   const language = useLanguage()
 
-  const open = (type: "openAgentManager" | "openMarketplacePanel" | "openProfilePanel" | "openSettingsPanel") =>
+  const open = (type: "openAgentManager" | "openProfilePanel" | "openSettingsPanel") =>
     vscode.postMessage({ type })
 
   const actions: Action[] = [
     { key: "newTask", icon: "plus", run: () => props.onNewTask() },
     { key: "history", icon: "history", run: () => props.onHistory() },
     { key: "agentManager", icon: "organization", run: () => open("openAgentManager") },
-    { key: "marketplace", icon: "extensions", run: () => open("openMarketplacePanel") },
     { key: "profile", icon: "user", run: () => open("openProfilePanel") },
     { key: "settings", icon: "settings-gear", run: () => open("openSettingsPanel") },
   ]

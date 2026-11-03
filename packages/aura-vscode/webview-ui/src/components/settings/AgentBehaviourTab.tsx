@@ -14,11 +14,13 @@ import { useConfig } from "../../context/config"
 import { useSession } from "../../context/session"
 import { useLanguage } from "../../context/language"
 import { useVSCode } from "../../context/vscode"
-import type { AgentInfo, ExtensionMessage, SkillInfo } from "../../types/messages"
+import type { AgentInfo, ExtensionMessage, SkillInfo, McpConfig } from "../../types/messages"
 import ModeEditView from "./ModeEditView"
 import ModeCreateView from "./ModeCreateView"
 import McpEditView from "./McpEditView"
 import WorkflowsTab from "./agent-behaviour/WorkflowsTab"
+import { configMessage } from "../../utils/open-config"
+import { providerEndpoint } from "@auracode/local-only"
 import {
   mcpConfigScope,
   mcpEnabledPatch,
@@ -79,7 +81,61 @@ const AgentBehaviourTab: Component<Props> = (props) => {
   const [newSkillUrl, setNewSkillUrl] = createSignal("")
   const [newInstruction, setNewInstruction] = createSignal("")
   const [claudeCompat, setClaudeCompat] = createSignal(false)
-  const browse = () => vscode.postMessage({ type: "openMarketplacePanel" })
+  // New servers are disabled until explicitly enabled by the user.
+  const [newMcpOpen, setNewMcpOpen] = createSignal(false)
+  const [newMcpName, setNewMcpName] = createSignal("")
+  const [newMcpTransport, setNewMcpTransport] = createSignal<"local" | "remote">("local")
+  const [newMcpScope, setNewMcpScope] = createSignal<"global" | "project">("global")
+  const [newMcpCommand, setNewMcpCommand] = createSignal("")
+  const [newMcpArgs, setNewMcpArgs] = createSignal("")
+  const [newMcpUrl, setNewMcpUrl] = createSignal("")
+  const [newMcpEnabled, setNewMcpEnabled] = createSignal(false)
+  const [newMcpError, setNewMcpError] = createSignal("")
+  const [newMcpNote, setNewMcpNote] = createSignal("")
+
+  const createMcp = () => {
+    const name = newMcpName().trim()
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name)) {
+      setNewMcpError("Use a unique server ID with letters, numbers, hyphens or underscores.")
+      return
+    }
+    if (config().mcp?.[name]) {
+      setNewMcpError("An MCP server with this ID already exists.")
+      return
+    }
+    let entry: McpConfig
+    if (newMcpTransport() === "local") {
+      const command = newMcpCommand().trim()
+      if (!command) {
+        setNewMcpError("Enter a command to start the local MCP server.")
+        return
+      }
+      entry = {
+        type: "local",
+        command: [command, ...newMcpArgs().split("\n").map((arg) => arg.trim()).filter(Boolean)],
+        enabled: newMcpEnabled(),
+      }
+    } else {
+      try {
+        const url = providerEndpoint(newMcpUrl().trim())
+        entry = { type: "remote", url, enabled: newMcpEnabled(), oauth: false }
+      } catch (error) {
+        setNewMcpError(error instanceof Error ? error.message : "Invalid MCP URL")
+        return
+      }
+    }
+    const change = { mcp: { [name]: entry } }
+    if (newMcpScope() === "project") updateProjectConfig(change)
+    else updateGlobalConfig(change)
+    setNewMcpOpen(false)
+    setNewMcpName("")
+    setNewMcpCommand("")
+    setNewMcpArgs("")
+    setNewMcpUrl("")
+    setNewMcpEnabled(false)
+    setNewMcpError("")
+    setNewMcpNote(`Added "${name}" to ${newMcpScope()} settings. Click Save Changes to apply.`)
+  }
 
   const unsubscribeInvalidation = vscode.onMessage((message: ExtensionMessage) => {
     if (message.type !== "agentBehaviourInvalidated") return
@@ -442,9 +498,6 @@ const AgentBehaviourTab: Component<Props> = (props) => {
             <Button variant="ghost" size="small" onClick={triggerImport}>
               {language.t("settings.agentBehaviour.importMode")}
             </Button>
-            <Button variant="ghost" size="small" onClick={browse}>
-              {language.t("settings.agentBehaviour.mcpBrowseMarketplace")}
-            </Button>
             <Button variant="secondary" size="small" onClick={() => setAgentView("create")}>
               {language.t("settings.agentBehaviour.createMode")}
             </Button>
@@ -732,10 +785,68 @@ const AgentBehaviourTab: Component<Props> = (props) => {
             "margin-bottom": "8px",
           }}
         >
-          <Button variant="secondary" size="small" onClick={browse}>
-            {language.t("settings.agentBehaviour.mcpBrowseMarketplace")}
+          <Button variant="secondary" size="small" onClick={() => setNewMcpOpen((value) => !value)}>
+            {newMcpOpen() ? "Cancel" : "Add MCP Server"}
+          </Button>
+          <Button variant="ghost" size="small" onClick={() => vscode.postMessage(configMessage("project", language.t))}>
+            Project JSON
+          </Button>
+          <Button variant="ghost" size="small" onClick={() => vscode.postMessage(configMessage("global", language.t))}>
+            Global JSON
           </Button>
         </div>
+        <Show when={newMcpNote()}>
+          <p style={{ "font-size": "var(--aura-font-size-12)", color: "var(--vscode-descriptionForeground)" }}>
+            {newMcpNote()}
+          </p>
+        </Show>
+        <Show when={newMcpOpen()}>
+          <Card style={{ "margin-bottom": "12px" }}>
+            <form onSubmit={(event) => { event.preventDefault(); createMcp() }}>
+              <div style={{ display: "flex", "gap": "12px", "flex-wrap": "wrap", "margin-bottom": "12px" }}>
+                <div style={{ flex: 1, "min-width": "150px" }}>
+                  <TextField label="Server ID" value={newMcpName()} placeholder="my-tools"
+                    onChange={(value) => { setNewMcpName(value); setNewMcpError("") }} />
+                </div>
+                <div style={{ flex: 1, "min-width": "150px" }}>
+                  <label style={{ display: "block", "margin-bottom": "6px", "font-size": "var(--aura-font-size-12)" }}>Transport</label>
+                  <select value={newMcpTransport()} onChange={(event) => setNewMcpTransport(event.currentTarget.value as "local" | "remote")}>
+                    <option value="local">Local command (stdio)</option>
+                    <option value="remote">Remote HTTP/SSE</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1, "min-width": "130px" }}>
+                  <label style={{ display: "block", "margin-bottom": "6px", "font-size": "var(--aura-font-size-12)" }}>Save to</label>
+                  <select value={newMcpScope()} onChange={(event) => setNewMcpScope(event.currentTarget.value as "project" | "global")}>
+                    <option value="global">Global configuration</option>
+                    <option value="project">Project configuration</option>
+                  </select>
+                </div>
+              </div>
+              <Show when={newMcpTransport() === "local"}>
+                <TextField label="Command" placeholder="npx" value={newMcpCommand()} onChange={setNewMcpCommand} />
+                <div style={{ "margin-top": "8px", "margin-bottom": "12px" }}>
+                  <TextField multiline label="Arguments (one per line)" placeholder="-y\n@modelcontextprotocol/server-filesystem\n/path/to/workspace"
+                    value={newMcpArgs()} onChange={setNewMcpArgs} />
+                </div>
+              </Show>
+              <Show when={newMcpTransport() === "remote"}>
+                <div style={{ "margin-bottom": "12px" }}>
+                  <TextField label="MCP server URL" placeholder="https://mcp.example.com/mcp"
+                    value={newMcpUrl()} onChange={setNewMcpUrl} />
+                </div>
+              </Show>
+              <label style={{ display: "flex", "gap": "8px", "align-items": "center", "margin-bottom": "10px", "font-size": "var(--aura-font-size-12)" }}>
+                <input type="checkbox" checked={newMcpEnabled()} onChange={(event) => setNewMcpEnabled(event.currentTarget.checked)} />
+                Enable after saving (local commands execute on your computer)
+              </label>
+              <Show when={newMcpError()}>
+                <p role="alert" style={{ color: "var(--vscode-errorForeground)" }}>{newMcpError()}</p>
+              </Show>
+              <Button variant="primary" type="submit">Add to settings</Button>
+            </form>
+          </Card>
+        </Show>
         <Show
           when={mcpEntries().length > 0}
           fallback={
@@ -1016,18 +1127,6 @@ const AgentBehaviourTab: Component<Props> = (props) => {
 
   const renderSkillsSubtab = () => (
     <div>
-      <div
-        style={{
-          display: "flex",
-          "align-items": "center",
-          "justify-content": "flex-end",
-          "margin-bottom": "8px",
-        }}
-      >
-        <Button variant="secondary" size="small" onClick={browse}>
-          {language.t("settings.agentBehaviour.mcpBrowseMarketplace")}
-        </Button>
-      </div>
       {/* Discovered skills */}
       <h4 style={{ "margin-top": "0", "margin-bottom": "8px" }}>
         {language.t("settings.agentBehaviour.discoveredSkills")}
