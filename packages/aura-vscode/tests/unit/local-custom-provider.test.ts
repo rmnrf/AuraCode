@@ -23,6 +23,8 @@ test("the original custom form saves credentials, headers, multiple models and c
         name: "Vision model",
         reasoning: true,
         supportsImages: true,
+        contextWindow: "131072",
+        maxOutputTokens: "8192",
         modalities: {},
         variants: [
           {
@@ -37,7 +39,7 @@ test("the original custom form saves credentials, headers, multiple models and c
           },
         ],
       },
-      { id: "small", name: "Small model", reasoning: false, supportsImages: false, modalities: {}, variants: [] },
+      { id: "small", name: "Small model", reasoning: false, supportsImages: false, contextWindow: "", maxOutputTokens: "", modalities: {}, variants: [] },
     ],
     headers: [{ key: "X-Local-Server", value: "custom" }],
   }
@@ -55,6 +57,7 @@ test("the original custom form saves credentials, headers, multiple models and c
   if ("error" in parsed) throw new Error(parsed.error)
   expect(parsed.value.options.baseURL).toBe("http://127.0.0.1:1234/v1")
   expect(parsed.value.models.vision.modalities?.input).toEqual(["text", "image"])
+  expect(parsed.value.models.vision.limit).toEqual({ context: 131072, output: 8192 })
   expect(parsed.value.models.vision.variants?.deep).toEqual({ reasoningEffort: "high" })
   const cfg = localConfig({ provider: { workstation: parsed.value }, model: "workstation/vision" })
   expect(cfg.provider.workstation.options.headers).toEqual({ "X-Local-Server": "custom" })
@@ -76,6 +79,16 @@ test("the original custom form saves credentials, headers, multiple models and c
     parsed.value,
   )
   expect(patch.options.headers).toEqual({ Old: null, "X-Local-Server": "custom" })
+  const invalid = validateCustomProvider({
+    ...input,
+    form: { ...form, models: [{ ...form.models[0], contextWindow: "4096", maxOutputTokens: "8192" }] },
+  })
+  expect(invalid.result).toBeUndefined()
+  expect(invalid.errors.models[0].maxOutputTokens).toContain("Output")
+  const cleared = withCustomProviderDeletions(parsed.value, {
+    ...parsed.value, models: { ...parsed.value.models, vision: { ...parsed.value.models.vision, limit: undefined } },
+  })
+  expect(cleared.models.vision.limit).toEqual({ context: null, output: null })
 })
 
 test("model discovery authenticates to custom servers and refuses HTTP redirects", async () => {

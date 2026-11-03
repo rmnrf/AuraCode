@@ -62,6 +62,7 @@ type RawModel = {
   reasoning?: boolean
   modalities?: { input?: unknown; output?: unknown }
   variants?: Record<string, Record<string, unknown>>
+  limit?: { context?: number; output?: number }
 }
 
 // Keep this aligned with the CLI provider schema; the UI only exposes image.
@@ -108,7 +109,7 @@ function parseVariant([name, cfg]: [string, Record<string, unknown>]): VariantEn
 }
 
 function initModels(cfg: ProviderConfig | undefined): ModelEntry[] {
-  const empty = { id: "", name: "", reasoning: false, supportsImages: false, modalities: {}, variants: [] }
+  const empty = { id: "", name: "", reasoning: false, supportsImages: false, contextWindow: "", maxOutputTokens: "", modalities: {}, variants: [] }
   if (!cfg?.models || typeof cfg.models !== "object") return [{ ...empty }]
   const entries = Object.entries(cfg.models)
   if (entries.length === 0) return [{ ...empty }]
@@ -121,6 +122,8 @@ function initModels(cfg: ProviderConfig | undefined): ModelEntry[] {
       name: raw.name ?? id,
       reasoning: raw.reasoning ?? false,
       supportsImages: input.includes("image"),
+      contextWindow: raw.limit?.context === undefined ? "" : String(raw.limit.context),
+      maxOutputTokens: raw.limit?.output === undefined ? "" : String(raw.limit.output),
       modalities,
       variants: Object.entries(raw.variants ?? {}).map(parseVariant),
     }
@@ -389,6 +392,8 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
       ...m,
       reasoning: false,
       supportsImages: false,
+      contextWindow: "",
+      maxOutputTokens: "",
       modalities: {},
       variants: [],
     })
@@ -448,7 +453,7 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
   function addModel() {
     setForm("models", (v) => [
       ...v,
-      { id: "", name: "", reasoning: false, supportsImages: false, modalities: {}, variants: [] },
+      { id: "", name: "", reasoning: false, supportsImages: false, contextWindow: "", maxOutputTokens: "", modalities: {}, variants: [] },
     ])
     setErrors("models", (v) => [...v, { variants: [] }])
   }
@@ -740,6 +745,8 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
                   onChangeName={(v) => setForm("models", i(), "name", v)}
                   onChangeReasoning={(v) => setForm("models", i(), "reasoning", v)}
                   onChangeSupportsImages={(v) => setForm("models", i(), "supportsImages", v)}
+                  onChangeContextWindow={(v) => setForm("models", i(), "contextWindow", v)}
+                  onChangeMaxOutputTokens={(v) => setForm("models", i(), "maxOutputTokens", v)}
                   onRemove={() => removeModel(i())}
                 />
               )}

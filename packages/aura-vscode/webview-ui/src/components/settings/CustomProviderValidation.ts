@@ -24,7 +24,7 @@ export type FormErrors = {
   providerID: string | undefined
   name: string | undefined
   baseURL: string | undefined
-  models: Array<{ id?: string; name?: string; variants?: Array<{ name?: string }> }>
+  models: Array<{ id?: string; name?: string; contextWindow?: string; maxOutputTokens?: string; variants?: Array<{ name?: string }> }>
   headers: Array<{ key?: string; value?: string }>
 }
 
@@ -74,9 +74,17 @@ function checkModel(m: ModelEntry, seenModels: Set<string>, t: Translator) {
   else seenModels.add(key)
 
   const nameErr = !m.name.trim() ? t("provider.custom.error.required") : undefined
+  const positive = (value: string) => !value.trim() || (/^[0-9]+$/.test(value.trim()) && Number.isSafeInteger(Number(value)) && Number(value) > 0)
+  const contextWindow = positive(m.contextWindow) ? undefined : "Enter a positive integer"
+  const maxOutputTokens = positive(m.maxOutputTokens) ? undefined : "Enter a positive integer"
+  const contextLimit = Number(m.contextWindow.trim() || "32768")
+  const outputLimit = Number(m.maxOutputTokens.trim() || "4096")
+  const outputError = !contextWindow && !maxOutputTokens && outputLimit > contextLimit
+    ? "Output must not exceed context window"
+    : undefined
   const seen = new Set<string>()
   const variants = m.reasoning ? m.variants.map((v) => checkVariant(v, seen, t)) : []
-  return { id: idErr, name: nameErr, variants }
+  return { id: idErr, name: nameErr, contextWindow, maxOutputTokens: maxOutputTokens ?? outputError, variants }
 }
 
 function checkHeader(h: HeaderRow, seenKeys: Set<string>, t: Translator) {
@@ -143,6 +151,11 @@ function modalities(m: ModelEntry): Modalities | undefined {
 function serializeModel(m: ModelEntry): [string, Record<string, unknown>] {
   const ventries = m.reasoning ? m.variants.filter((v) => v.name.trim()).map(serializeVariant) : []
   const entry: Record<string, unknown> = { name: m.name.trim() }
+  const limit = {
+    ...(m.contextWindow.trim() ? { context: Number(m.contextWindow.trim()) } : {}),
+    ...(m.maxOutputTokens.trim() ? { output: Number(m.maxOutputTokens.trim()) } : {}),
+  }
+  if (Object.keys(limit).length) entry.limit = limit
   const modes = modalities(m)
   if (m.reasoning) entry.reasoning = true
   if (modes) entry.modalities = modes
@@ -190,7 +203,7 @@ export function validateCustomProvider(input: ValidateArgs): ValidateResult {
 
   const seenModels = new Set<string>()
   const modelErrors = input.form.models.map((m) => checkModel(m, seenModels, input.t))
-  const modelsValid = modelErrors.every((m) => !m.id && !m.name && m.variants.every((v) => !v.name))
+  const modelsValid = modelErrors.every((m) => !m.id && !m.name && !m.contextWindow && !m.maxOutputTokens && m.variants.every((v) => !v.name))
 
   const seenHeaders = new Set<string>()
   const headerErrors = input.form.headers.map((h) => checkHeader(h, seenHeaders, input.t))

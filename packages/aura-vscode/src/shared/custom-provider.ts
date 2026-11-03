@@ -62,6 +62,10 @@ export const CustomProviderConfigSchema = z
             name: z.string().trim().min(1).max(200),
             reasoning: z.boolean().optional(),
             modalities: ModelModalitiesSchema.optional(),
+            limit: z.object({
+              context: z.number().int().positive().max(10_000_000).optional(),
+              output: z.number().int().positive().max(10_000_000).optional(),
+            }).strict().optional(),
             variants: z.record(z.string().trim().min(1), VariantConfigSchema).optional(),
           })
           .strict(),
@@ -80,7 +84,7 @@ export type SanitizedProviderConfig = {
   }
   models: Record<
     string,
-    { name: string; reasoning?: true; modalities?: ModelModalities; variants?: Record<string, VariantConfig> }
+    { name: string; reasoning?: true; modalities?: ModelModalities; limit?: { context?: number; output?: number }; variants?: Record<string, VariantConfig> }
   >
 }
 
@@ -153,6 +157,7 @@ export function normalizeCustomProviderConfig(
           name: model.name.trim(),
           ...(model.reasoning ? { reasoning: true as const } : {}),
           ...(model.modalities ? { modalities: model.modalities } : {}),
+          ...(model.limit ? { limit: model.limit } : {}),
           ...(model.variants && Object.keys(model.variants).length > 0 ? { variants: model.variants } : {}),
         },
       ]),
@@ -179,6 +184,7 @@ type ProviderPatch = Omit<SanitizedProviderConfig, "models"> & {
       name: string
       reasoning?: true | null
       modalities?: ModelModalities | null
+      limit?: { context?: number | null; output?: number | null } | null
       variants?: Record<string, VariantConfig | VariantPatch | null>
     }
   >
@@ -238,6 +244,13 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
       ...(variants ? { variants } : {}),
       ...(oldModel.reasoning !== undefined && newModel.reasoning === undefined ? { reasoning: null } : {}),
       ...(oldModel.modalities !== undefined && newModel.modalities === undefined ? { modalities: null } : {}),
+      ...(isRecord(oldModel.limit)
+        ? { limit: {
+            ...newModel.limit,
+            ...(oldModel.limit.context !== undefined && newModel.limit?.context === undefined ? { context: null } : {}),
+            ...(oldModel.limit.output !== undefined && newModel.limit?.output === undefined ? { output: null } : {}),
+          } }
+        : {}),
     }
   }
 

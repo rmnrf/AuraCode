@@ -35,19 +35,24 @@ export type ModelEntry = {
   name: string
   reasoning: boolean
   supportsImages: boolean
+  /** Optional per-model limits. Empty strings use the runtime defaults. */
+  contextWindow: string
+  maxOutputTokens: string
   modalities: Modalities
   variants: VariantEntry[]
 }
 
 type ModelCardProps = {
   m: ModelEntry
-  errors: { id?: string; name?: string; variants?: Array<{ name?: string }> }
+  errors: { id?: string; name?: string; contextWindow?: string; maxOutputTokens?: string; variants?: Array<{ name?: string }> }
   t: Translator
   canRemove: boolean
   onChangeId: (val: string) => void
   onChangeName: (val: string) => void
   onChangeReasoning: (val: boolean) => void
   onChangeSupportsImages: (val: boolean) => void
+  onChangeContextWindow: (val: string) => void
+  onChangeMaxOutputTokens: (val: string) => void
   onRemove: () => void
 }
 
@@ -136,6 +141,39 @@ export function ModelCard(props: ModelCardProps) {
           {props.t("provider.custom.models.modalities.image")}
         </label>
       </div>
+
+      <details style={{ "border-top": "1px solid var(--border-weak-base)", "padding-top": "8px" }}>
+        <summary style={{ cursor: "pointer", "font-size": "var(--aura-font-size-13)", "font-weight": "500" }}>
+          Context window and output limits
+        </summary>
+        <div style={{ display: "flex", gap: "12px", "flex-wrap": "wrap", "padding-top": "12px" }}>
+          <div style={{ flex: 1, "min-width": "140px" }}>
+            <TextField
+              type="number"
+              label="Context window (tokens)"
+              placeholder="32768 (default)"
+              value={props.m.contextWindow}
+              onChange={props.onChangeContextWindow}
+              validationState={props.errors.contextWindow ? "invalid" : undefined}
+              error={props.errors.contextWindow}
+            />
+          </div>
+          <div style={{ flex: 1, "min-width": "140px" }}>
+            <TextField
+              type="number"
+              label="Max output tokens"
+              placeholder="4096 (default)"
+              value={props.m.maxOutputTokens}
+              onChange={props.onChangeMaxOutputTokens}
+              validationState={props.errors.maxOutputTokens ? "invalid" : undefined}
+              error={props.errors.maxOutputTokens}
+            />
+          </div>
+        </div>
+        <p style={{ "font-size": "var(--aura-font-size-11)", color: "var(--text-weak-base)", margin: "8px 0 0" }}>
+          Leave blank to use the default. Enter limits supported by your model server.
+        </p>
+      </details>
 
       <Show when={issue()}>
         {(error) => (
