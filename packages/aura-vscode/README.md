@@ -75,7 +75,7 @@ removal requests and do not fetch a catalog.
 Required: Git with Git LFS, Node 24 and Bun **1.4.4**. The `.github/workflows/build-windows.yml` workflow builds the same package on a Windows runner.
 
 ```powershell
-$env:AURA_VERSION = "1.0.3"
+$env:AURA_VERSION = "1.0.4"
 $env:AURA_CHANNEL = "latest"
 $env:AURA_RELEASE = "true"
 bun install
@@ -87,7 +87,7 @@ bun run typecheck
 bun run lint
 bun script/local-bin.ts --compiled
 bun run bundle:production
-bunx vsce package --no-dependencies --target win32-x64 --out ../../auracode-1.0.3-win32-x64.vsix
+bunx vsce package --no-dependencies --target win32-x64 --out ../../auracode-1.0.4-win32-x64.vsix
 ```
 
 Install the resulting package using VS Code's **Extensions: Install from VSIX** command.

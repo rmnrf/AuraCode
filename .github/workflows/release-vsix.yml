@@ -1,4 +1,4 @@
-name: Publish AuraCode 1.0.3 VSIX
+name: Publish AuraCode 1.0.4 VSIX
 on:
   workflow_run:
     workflows: ["Build AuraCode for Windows"]
@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Download successfully tested AuraCode 1.0.3 VSIX
+      - name: Download successfully tested AuraCode 1.0.4 VSIX
         uses: actions/download-artifact@v4
         with:
-          name: auracode-1.0.3-win32-x64
+          name: auracode-1.0.4-win32-x64
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
           path: verified
@@ -27,37 +27,58 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          file="verified/auracode-1.0.3-win32-x64.vsix"
+          file="verified/auracode-1.0.4-win32-x64.vsix"
           test -s "$file"
           current=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
           if [ "$current" != "$SOURCE_SHA" ]; then echo "Refusing to publish from a superseded build: $SOURCE_SHA != $current"; exit 1; fi
           version=$(unzip -p "$file" extension/package.json | node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync(0,'utf8'));if(p.name!=='aura-code'||p.publisher!=='auracode')process.exit(2);console.log(p.version)")
-          if [ "$version" != "1.0.3" ]; then echo "Unexpected extension version: $version"; exit 1; fi
+          if [ "$version" != "1.0.4" ]; then echo "Unexpected extension version: $version"; exit 1; fi
           digest=$(sha256sum "$file" | awk '{print $1}')
           echo "Verified AuraCode $version — SHA256 $digest"
-          if gh release view v1.0.3 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo 'Release v1.0.3 exists; old assets remain untouched.'
+          if gh release view v1.0.4 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release v1.0.4 exists; old assets remain untouched.'
             exit 0
           fi
           cat > notes.md <<EOF
-          AuraCode 1.0.3 — Windows x64 VS Code extension.
+          # AuraCode 1.0.4 — исправления для повседневной работы
 
-          Changes since 1.0.2:
-          - Fixed repeat context compaction: checkpoints now retain the previous summary and summarize only new turns and the protected recent tail.
-          - Chunked summarization carries the preceding summary through the final reduction, including single-chunk cases.
-          - Reduced concurrent summarization pressure on local inference servers.
-          - Added tests covering prior summaries, recent history, incomplete checkpoints and invalid tail markers.
-          - Per-model Context Window and Max Output Tokens are editable in a collapsible model section.
-          - Added custom MCP server configuration in Settings (global or project scope) and JSON; disabled Marketplace catalog and install routes.
-          - Custom HTTPS and private LAN model providers continue to work; privacy protections remain enabled.
+          В этой версии исправлены две проблемы, которые мешали работе с новыми задачами и поиском по проекту.
 
-          Requires Windows x64 and VS Code 1.105.1 or newer.
-          Local and remote MCP tools can execute commands or receive data when explicitly enabled; review servers before trusting them.
-          CI: context compaction regression tests, privacy and provider tests, backend and extension type checking, ESLint, native Windows compilation, local inference smoke test and packaged branding audit.
-          Full long-session compaction quality on individual model servers is not yet confirmed.
+          ## Что изменилось
 
-          Source commit: $SOURCE_SHA
-          Build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID
-          SHA256: $digest
+          ### Выбранная модель больше не сбрасывается при New Task
+
+          Раньше после нажатия **New Task** AuraCode иногда переключался на модель по умолчанию, даже если вы только что выбрали другую.
+
+          Теперь новая задача использует **последнюю выбранную модель**, а после отправки первого сообщения выбор закрепляется за этой задачей. Уже открытые диалоги сохраняют собственные настройки. Если модель больше недоступна, используется доступная модель из конфигурации.
+
+          ### Агент перестал вызывать ripgrep через терминал
+
+          Раньше агент иногда запускал команды `rg` или `ripgrep` напрямую. Это могло приводить к ошибке, если утилита не была установлена или недоступна в PATH.
+
+          Теперь такие прямые команды блокируются, а инструкции агента предлагают пользоваться встроенными инструментами **Grep** и **Glob**. Поиск по файлам и содержимому проекта остаётся доступен: внутренний механизм этих инструментов не удалён.
+
+          ## Что осталось на месте
+
+          - Пользовательские провайдеры с HTTPS и адресами локальной сети.
+          - Отдельные лимиты контекста и вывода для каждой модели.
+          - Пользовательские MCP-серверы в интерфейсе и конфигурации проекта.
+          - Исправления повторного сжатия контекста из версии 1.0.3.
+
+          ## Как установить
+
+          1. Скачайте файл `auracode-1.0.4-win32-x64.vsix` ниже.
+          2. В VS Code откройте **Extensions → ... → Install from VSIX**.
+          3. Выберите скачанный файл и выполните **Developer: Reload Window**.
+
+          **Требования:** Windows x64, VS Code версии 1.105.1 или новее.
+
+          ## Проверки сборки
+
+          Проверены сохранение модели в новой задаче, запрет прямых вызовов ripgrep, сжатие контекста, конфигурация провайдеров, отключение телеметрии, TypeScript, ESLint, сборка Windows и локальный тест AI-движка.
+
+          Исходный коммит: `$SOURCE_SHA`
+          [Журнал сборки](https://github.com/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID)
+          **SHA256:** `$digest`
           EOF
-          gh release create v1.0.3 "$file" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'AuraCode 1.0.3 — Windows x64' --notes-file notes.md --latest
+          gh release create v1.0.4 "$file" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title 'AuraCode 1.0.4 — Windows x64' --notes-file notes.md --latest
