@@ -47,7 +47,6 @@ import {
 import { GitOps } from "./agent-manager/GitOps"
 import { GitStatsPoller, type LocalStats } from "./agent-manager/GitStatsPoller"
 import { removeMcp } from "./aura-provider/remove-config-item"
-import { MarketplaceService } from "./services/marketplace"
 import type { RemoteStatusService } from "./services/RemoteStatusService"
 import { resolveProjectDirectory } from "./project-directory"
 import { seedSessionStatuses, seedSessionWakeups, clientSessionStatus } from "./session-status"
@@ -106,7 +105,6 @@ import {
 import * as McpOAuth from "./aura-provider/mcp-oauth"
 import { mcpAuth } from "./services/mcp-auth"
 import { mcpRemoval } from "./services/mcp-removal"
-import { marketplaceBundles } from "./services/marketplace/bundles"
 import { retryable, backoff, MAX_RETRIES } from "./util/retry"
 import { hasGit } from "./aura-provider/git-status"
 import {
@@ -558,7 +556,6 @@ export class AuraProvider implements vscode.WebviewViewProvider {
   private panel: vscode.WebviewPanel | undefined
   private latch: ReturnType<typeof watchRestore> | undefined
   private autoApproveBridge: ReturnType<typeof createAutoApproveBridge> | null = null
-  private readonly marketplace = new MarketplaceService()
 
   /** Workspace folders plus any session directories recently asked about. */
   private static readonly IGNORE_CONTROLLER_LIMIT = 16
@@ -810,7 +807,6 @@ export class AuraProvider implements vscode.WebviewViewProvider {
   private get removeConfigItemCtx() {
     return {
       connection: this.connectionService,
-      marketplace: this.marketplace,
       project: () => this.getProjectDirectory(this.currentSession?.id),
       directory: () => this.getWorkspaceDirectory(),
       refresh: async () => {
@@ -3224,23 +3220,11 @@ export class AuraProvider implements vscode.WebviewViewProvider {
     if (!reconnected) McpOAuth.notifyResetFailed(name)
   }
 
+  /** Legacy webviews get an empty list. Bundled Marketplace discovery is removed. */
   private async fetchAndSendMcpBundles(): Promise<void> {
-    if (!this.client) {
-      if (this.cachedMcpBundlesMessage) {
-        this.postMessage(this.cachedMcpBundlesMessage)
-      }
-      return
-    }
-
-    try {
-      const dir = this.getWorkspaceDirectory()
-      const bundles = await marketplaceBundles(this.client, dir)
-      const message = { type: "mcpBundles", bundles }
-      this.cachedMcpBundlesMessage = message
-      this.postMessage(message)
-    } catch (error) {
-      console.error("[Aura New] AuraProvider: Failed to fetch MCP bundles:", error)
-    }
+    const message = { type: "mcpBundles", bundles: [] }
+    this.cachedMcpBundlesMessage = message
+    this.postMessage(message)
   }
 
   private async handleMemoryMessage(message: Record<string, unknown>): Promise<boolean> {
@@ -5195,7 +5179,6 @@ export class AuraProvider implements vscode.WebviewViewProvider {
     await this.extensionContext?.globalState.update("modelUsage", undefined)
     await this.extensionContext?.globalState.update("aura.dismissedNotificationIds", undefined)
     await this.extensionContext?.globalState.update("aura.agentMigrationBannerDismissed", undefined)
-    await this.extensionContext?.globalState.update("aura.marketplace.dismissedSuggestions", undefined)
 
     // Re-send all settings to the webview so the UI reflects the reset
     this.postMessage(buildAutocompleteSettingsMessage())
