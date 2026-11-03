@@ -9,8 +9,6 @@ import { DocumentViewerProvider } from "./DocumentViewerProvider"
 import { DiffSourceCatalog } from "./diff/sources/catalog"
 import { DiffVirtualProvider } from "./DiffVirtualProvider"
 import { SettingsEditorProvider } from "./SettingsEditorProvider"
-import { MarketplacePanelProvider } from "./MarketplacePanelProvider"
-import { MarketplaceNotifier } from "./services/marketplace/notifier"
 import { SubAgentViewerProvider } from "./SubAgentViewerProvider"
 import { BrowserTabProvider } from "./browser-tab/BrowserTabProvider"
 import { formatBrowserFeedback } from "./shared/browser-feedback"
@@ -91,7 +89,7 @@ export async function activate(context: vscode.ExtensionContext) {
     (dir): Promise<void> => browserAutomationService.ready(dir),
   )
 
-  // One MCP OAuth sign-in service for the whole extension (sidebar, Aura tabs, Settings, Marketplace).
+  // One MCP OAuth sign-in service for the sidebar, Aura tabs and Settings.
   // Initialize it eagerly so its MCP OAuth URL subscriptions and `onUrl`
   // fallback are wired up exactly once, instead of racing whichever
   // AuraProvider happens to construct first.
@@ -539,18 +537,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ...agentManagerProvider.settings,
   })
   settingsEditorProvider.setRemoteService(remoteService)
-  const marketplacePanelProvider = new MarketplacePanelProvider(context.extensionUri, connectionService, context)
-  context.subscriptions.push(settingsEditorProvider, marketplacePanelProvider)
-
-  // Surface a discardable notification when a marketplace item matches the workspace.
-  const marketplaceNotifier = new MarketplaceNotifier(
-    connectionService,
-    context,
-    (item) => marketplacePanelProvider.openInstall(item),
-    (item) => marketplacePanelProvider.focusItem(item),
-  )
-  context.subscriptions.push(marketplaceNotifier)
-  // Local-only build does not fetch marketplace suggestions.
+  context.subscriptions.push(settingsEditorProvider)
 
   // Create sub-agent viewer provider (read-only editor panel for sub-agent sessions)
   const subAgentViewerProvider = new SubAgentViewerProvider(context.extensionUri, connectionService, context)
@@ -568,15 +555,6 @@ export async function activate(context: vscode.ExtensionContext) {
       }),
     )
   }
-
-  context.subscriptions.push(
-    vscode.window.registerWebviewPanelSerializer(MarketplacePanelProvider.viewType, {
-      deserializeWebviewPanel(panel: vscode.WebviewPanel) {
-        marketplacePanelProvider.deserializePanel(panel)
-        return Promise.resolve()
-      },
-    }),
-  )
 
   context.subscriptions.push(
     vscode.window.registerWebviewPanelSerializer(DocumentViewerProvider.viewType, {
@@ -634,9 +612,6 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.agentManagerOpen", () => {
       dispatch("aura-code.new.agentManagerOpen")
     }),
-    vscode.commands.registerCommand("aura-code.new.sidebarTitle.marketplaceButtonClicked", () => {
-      dispatch("aura-code.new.marketplaceButtonClicked")
-    }),
     vscode.commands.registerCommand("aura-code.new.sidebarTitle.profileButtonClicked", () => {
       dispatch("aura-code.new.profileButtonClicked")
     }),
@@ -656,9 +631,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand("aura-code.new.agentManagerOpen", () => {
       agentManagerProvider.openPanel()
-    }),
-    vscode.commands.registerCommand("aura-code.new.marketplaceButtonClicked", (directory?: string | null) => {
-      marketplacePanelProvider.openPanel(directory)
     }),
     vscode.commands.registerCommand("aura-code.new.historyButtonClicked", () => {
       const tab = activeTabProvider()

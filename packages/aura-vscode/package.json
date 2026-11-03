@@ -105,12 +105,6 @@
         "icon": "$(organization)"
       },
       {
-        "command": "aura-code.new.marketplaceButtonClicked",
-        "title": "Marketplace",
-        "category": "AuraCode",
-        "icon": "$(extensions)"
-      },
-      {
         "command": "aura-code.new.historyButtonClicked",
         "title": "History",
         "category": "AuraCode",
@@ -143,11 +137,6 @@
         "command": "aura-code.new.sidebarTitle.agentManagerOpen",
         "title": "Agent Manager",
         "icon": "$(organization)"
-      },
-      {
-        "command": "aura-code.new.sidebarTitle.marketplaceButtonClicked",
-        "title": "Marketplace",
-        "icon": "$(extensions)"
       },
       {
         "command": "aura-code.new.sidebarTitle.historyButtonClicked",
@@ -503,10 +492,6 @@
           "when": "false"
         },
         {
-          "command": "aura-code.new.sidebarTitle.marketplaceButtonClicked",
-          "when": "false"
-        },
-        {
           "command": "aura-code.new.sidebarTitle.profileButtonClicked",
           "when": "false"
         },
@@ -529,11 +514,6 @@
         {
           "command": "aura-code.new.sidebarTitle.agentManagerOpen",
           "group": "navigation@2",
-          "when": "view == aura-code.SidebarProvider && !aura-code.new.isCursor"
-        },
-        {
-          "command": "aura-code.new.sidebarTitle.marketplaceButtonClicked",
-          "group": "navigation@3",
           "when": "view == aura-code.SidebarProvider && !aura-code.new.isCursor"
         },
         {

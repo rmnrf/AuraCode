@@ -778,14 +778,6 @@ export class AuraProvider implements vscode.WebviewViewProvider {
     })
   }
 
-  private openMarketplacePanel(directory: unknown): void {
-    if (typeof directory === "string" && directory) {
-      vscode.commands.executeCommand("aura-code.new.marketplaceButtonClicked", directory)
-      return
-    }
-    vscode.commands.executeCommand("aura-code.new.marketplaceButtonClicked", this.projectDirectory)
-  }
-
   // Strip metadata unused by the webview to keep session switches fast.
   // Logic in aura-provider/slim-metadata.ts.
   private slimInfo<T>(info: T): T {
@@ -1445,9 +1437,6 @@ export class AuraProvider implements vscode.WebviewViewProvider {
           break
         case "openConfigFile":
           await openConfig(message.scope, message.labels, this.getProjectDirectory(this.currentSession?.id))
-          break
-        case "openMarketplacePanel":
-          this.openMarketplacePanel(message.directory)
           break
         case "forkSession":
           handleForkSession(this.forkCtx, message.sessionId, message.messageId).catch((e) =>
