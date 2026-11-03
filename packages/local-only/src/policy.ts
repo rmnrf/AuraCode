@@ -122,7 +122,7 @@ export function localConfig<T extends Config>(input: T): T {
     }),
   )
   const mcp = Object.fromEntries(
-    Object.entries(input.mcp ?? {}).flatMap(([name, value]) => {
+    Object.entries(input.mcp ?? {}).flatMap<[string, Record<string, unknown>]>(([name, value]) => {
       if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name) || !value || typeof value !== "object" || Array.isArray(value))
         return []
       const server = value as Record<string, unknown>
@@ -156,10 +156,10 @@ export function localConfig<T extends Config>(input: T): T {
       }
       return []
     }),
-  )
+  ) as Record<string, { type: string; enabled: boolean; url?: string }>
   configureProviderOrigins([
     ...Object.values(providers).map((provider) => String(provider.options.baseURL)),
-    ...Object.values(mcp).flatMap((server) => server.type === "remote" && server.enabled ? [server.url] : []),
+    ...Object.values(mcp).flatMap((server) => server.type === "remote" && server.enabled && server.url ? [server.url] : []),
   ])
   const disabled = input.disabled_providers ?? []
   const models = Object.entries(providers)
