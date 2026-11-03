@@ -17,6 +17,7 @@ import * as AuraSkill from "@/auracode/skill-remove"
 import { Agent } from "@/agent/agent"
 import { Command } from "@/command"
 import { Config } from "@/config/config"
+import { MCP } from "@/mcp"
 import { WorkspaceRef } from "@/effect/instance-ref"
 import { InstanceState } from "@/effect/instance-state"
 import { HeapSnapshot } from "@/auracode/cli/heap-snapshot"
@@ -60,6 +61,7 @@ import {
   NotebookRejectPayload,
   NotebookReplyPayload,
   RemoveAgentPayload,
+  RemoveCustomMcpPayload,
   RemoveCommandPayload,
   RemoveSkillPayload,
   RemoveSnapshotPayload,
@@ -79,6 +81,7 @@ export const auracodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "auracode"
     const commands = yield* Command.Service
     const skills = yield* Skill.Service
     const config = yield* Config.Service
+    const mcp = yield* MCP.Service
     const store = yield* InstanceStore.Service
     const manager = yield* AgentManager.Service
     const notebook = yield* Notebook.Service
@@ -280,6 +283,21 @@ export const auracodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "auracode"
         }),
       )
       yield* store.dispose(instance)
+      return true
+    })
+
+    const removeCustomMcp = Effect.fn("AuracodeHttpApi.removeCustomMcp")(function* (ctx: {
+      payload: typeof RemoveCustomMcpPayload.Type
+    }) {
+      const name = ctx.payload.name
+      if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(name))
+        return yield* new HttpApiError.BadRequest({})
+      const patch = { mcp: { [name]: null } } as unknown as Config.Info
+      // Internal config APIs support null deletion sentinels that are intentionally
+      // not exposed in the public ConfigV1 HTTP schema.
+      yield* config.update(patch)
+      yield* config.updateGlobal(patch)
+      yield* mcp.remove(name)
       return true
     })
 
@@ -493,6 +511,7 @@ export const auracodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "auracode"
       .handle("removeCommand", removeCommand)
       .handle("removeSkill", removeSkill)
       .handle("removeAgent", removeAgent)
+      .handle("removeCustomMcp", removeCustomMcp)
       .handle("marketplaceList", marketplaceList)
       .handle("marketplaceInstall", marketplaceInstall)
       .handle("marketplaceRemove", marketplaceRemove)

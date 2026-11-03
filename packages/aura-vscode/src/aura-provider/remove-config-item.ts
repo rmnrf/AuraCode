@@ -13,10 +13,11 @@ export async function removeMcp(ctx: RemoveConfigItemContext, name: string): Pro
   try {
     const directory = ctx.directory()
     const client = await ctx.connection.getClientAsync(directory)
-    const config = { mcp: { [name]: null } }
-    const project = ctx.project()
-    if (project) await client.config.update({ directory: project, config }, { throwOnError: true })
-    await client.global.config.update({ config }, { throwOnError: true })
+    const { data } = await client.auracode.removeCustomMcp(
+      { directory, name },
+      { throwOnError: true },
+    )
+    if (!data) return false
     await ctx.refresh()
     return true
   } catch (error) {

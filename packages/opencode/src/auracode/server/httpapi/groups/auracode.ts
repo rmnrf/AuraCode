@@ -74,6 +74,10 @@ export const RemoveAgentPayload = Schema.Struct({
   scope: Schema.optional(Scope),
 })
 
+export const RemoveCustomMcpPayload = Schema.Struct({
+  name: Schema.String,
+})
+
 export const RemoveSnapshotPayload = Schema.Struct({
   worktree: Schema.String,
 })
@@ -148,6 +152,7 @@ export const AuracodePaths = {
   removeCommand: `${root}/command/remove`,
   removeSkill: `${root}/skill/remove`,
   removeAgent: `${root}/agent/remove`,
+  removeCustomMcp: `${root}/mcp/remove-custom`,
   marketplaceList: `${root}/marketplace`,
   marketplaceInstall: `${root}/marketplace/install`,
   marketplaceRemove: `${root}/marketplace/remove`,
@@ -289,6 +294,18 @@ export const AuracodeApi = HttpApi.make("auracode")
             summary: "Remove a custom agent",
             description:
               "Remove a custom (non-native) agent from one writable configuration scope, or every writable scope when omitted, and dispose cached instance state.",
+          }),
+        ),
+        HttpApiEndpoint.post("removeCustomMcp", AuracodePaths.removeCustomMcp, {
+          query: WorkspaceRoutingQuery,
+          payload: RemoveCustomMcpPayload,
+          success: described(Schema.Boolean, "Custom MCP server removed"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "auracode.removeCustomMcp",
+            summary: "Remove user-configured MCP server",
+            description: "Remove an MCP server from project and global configuration without using the Marketplace.",
           }),
         ),
         HttpApiEndpoint.get("marketplaceList", AuracodePaths.marketplaceList, {
