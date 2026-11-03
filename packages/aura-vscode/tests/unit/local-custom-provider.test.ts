@@ -61,11 +61,14 @@ test("the original custom form saves credentials, headers, multiple models and c
   expect(Object.keys(cfg.provider.workstation.models)).toEqual(["vision", "small"])
   expect(cfg.provider.workstation.models.vision.reasoning).toBe(true)
   expect(
-    validateCustomProvider({ ...input, form: { ...form, baseURL: "https://api.openai.com/v1" } }).result,
-  ).toBeUndefined()
+    validateCustomProvider({ ...input, form: { ...form, baseURL: "https://models.example.com/v1" } }).result?.config.options.baseURL,
+  ).toBe("https://models.example.com/v1")
   expect(
-    "error" in sanitizeCustomProviderConfig({ ...result.config, options: { baseURL: "https://api.openai.com/v1" } }),
-  ).toBe(true)
+    sanitizeCustomProviderConfig({ ...result.config, options: { baseURL: "https://models.example.com/v1" } }),
+  ).toHaveProperty("value")
+  expect(
+    validateCustomProvider({ ...input, form: { ...form, baseURL: "http://models.example.com/v1" } }).result,
+  ).toBeUndefined()
   expect(resolveCustomProviderAuth(undefined, false)).toEqual({ mode: "preserve" })
   expect(resolveCustomProviderAuth("", true)).toEqual({ mode: "clear" })
   const patch = withCustomProviderDeletions(
@@ -75,7 +78,7 @@ test("the original custom form saves credentials, headers, multiple models and c
   expect(patch.options.headers).toEqual({ Old: null, "X-Local-Server": "custom" })
 })
 
-test("model discovery authenticates to the local server and rejects redirects and cloud URLs", async () => {
+test("model discovery authenticates to custom servers and refuses HTTP redirects", async () => {
   const requests: string[] = []
   const server = createServer((req, res) => {
     requests.push(req.url!)
@@ -104,7 +107,7 @@ test("model discovery authenticates to the local server and rejects redirects an
     ])
     await expect(fetchOpenAIModels({ baseURL: base + "/v1" })).rejects.toThrow("HTTP 401")
     await expect(fetchOpenAIModels({ ...options, baseURL: base + "/redirect" })).rejects.toThrow("redirect")
-    await expect(fetchOpenAIModels({ ...options, baseURL: "https://example.com/v1" })).rejects.toThrow("only")
+    await expect(fetchOpenAIModels({ ...options, baseURL: "http://example.com/v1" })).rejects.toThrow("HTTPS")
     expect(requests).toEqual(["/v1/models", "/v1/models", "/redirect/models"])
   } finally {
     server.closeAllConnections()

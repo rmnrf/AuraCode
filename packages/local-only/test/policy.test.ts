@@ -1,10 +1,10 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { createServer } from "node:http"
-import { endpoint, localConfig, localURL } from "../src/policy.ts"
+import { endpoint, providerEndpoint, localConfig, localURL } from "../src/policy.ts"
 import { auraFetch } from "../src/fetch.ts"
 
-test("accepts loopback only and normalizes localhost without DNS", () => {
+test("internal endpoints stay local and custom providers explicitly permit HTTPS and LAN", () => {
   assert.equal(endpoint("http://localhost:1234/v1/"), "http://127.0.0.1:1234/v1")
   assert.equal(endpoint("http://[::1]:8080/v1"), "http://[::1]:8080/v1")
   for (const value of [
@@ -22,6 +22,19 @@ test("accepts loopback only and normalizes localhost without DNS", () => {
   ])
     assert.throws(() => endpoint(value), value)
   assert.equal(localURL("ws://localhost:1234/path").hostname, "127.0.0.1")
+  assert.equal(providerEndpoint("http://192.168.1.42:8080/v1"), "http://192.168.1.42:8080/v1")
+  assert.equal(providerEndpoint("http://10.8.2.3:8000/v1"), "http://10.8.2.3:8000/v1")
+  assert.equal(providerEndpoint("https://models.example.com/v1/"), "https://models.example.com/v1")
+  assert.equal(providerEndpoint("http://localhost:1234/v1"), "http://127.0.0.1:1234/v1")
+  for (const url of [
+    "http://models.example.com/v1",
+    "http://8.8.8.8/v1",
+    "http://0.0.0.0/v1",
+    "http://user:secret@192.168.1.5/v1",
+    "https://models.example.com/v1?api_key=secret",
+    "file:///etc/passwd",
+  ]) assert.throws(() => providerEndpoint(url), url)
+  assert.throws(() => localURL("https://models.example.com/v1/models"), /only permits/)
 })
 
 test("project config and model overrides cannot enable cloud providers or plugins", () => {
@@ -52,7 +65,12 @@ test("project config and model overrides cannot enable cloud providers or plugin
   assert.equal(config.small_model, config.model)
   assert.deepEqual(config.plugin, [])
   assert.deepEqual(config.mcp, {})
-  assert.throws(() => localConfig({ provider: { local: { options: { baseURL: "https://example.com" } } } }))
+  const remote = localConfig({
+    provider: { workstation: { npm: "@ai-sdk/openai-compatible", options: { baseURL: "https://models.example.com/v1" } } },
+  })
+  assert.equal(remote.provider.workstation.options.baseURL, "https://models.example.com/v1")
+  assert.equal(localURL("https://models.example.com/v1/models").origin, "https://models.example.com")
+  assert.throws(() => localURL("https://unapproved.example.com/private"), /only permits/)
 })
 
 test("custom IDs, protocols, credentials and model capabilities survive effective config", () => {
@@ -96,9 +114,10 @@ test("custom IDs, protocols, credentials and model capabilities survive effectiv
   assert.deepEqual(config.provider.workstation.env, ["LOCAL_KEY"])
   assert.equal(config.provider.responses.npm, "@ai-sdk/openai")
   assert.equal(config.provider.messages.npm, "@ai-sdk/anthropic")
-  assert.throws(() =>
-    localConfig({ provider: { remote: { npm: "@ai-sdk/openai", options: { baseURL: "https://api.openai.com/v1" } } } }),
-  )
+  const remote = localConfig({
+    provider: { remote: { npm: "@ai-sdk/openai", options: { baseURL: "https://api.example.com/v1" } } },
+  })
+  assert.equal(remote.provider.remote.options.baseURL, "https://api.example.com/v1")
   assert.deepEqual(localConfig({ provider: { removed: null } }).provider, {})
   assert.ok(
     !("apiKey" in localConfig({ provider: { local: { options: { apiKey: "local" } } } }).provider.local.options),
@@ -136,7 +155,7 @@ test("streams an actual local response and refuses every HTTP redirect", async (
     assert.match(await res.text(), /local/)
     await assert.rejects(auraFetch(`${base}/redirect`), /redirect/)
     await assert.rejects(auraFetch(`${base}/local-redirect`), /redirect/)
-    await assert.rejects(auraFetch("https://example.com/private"), /only/)
+    await assert.rejects(auraFetch("https://unapproved.example.com/private"), /only/)
     assert.equal(requests, 3)
   } finally {
     server.closeAllConnections()

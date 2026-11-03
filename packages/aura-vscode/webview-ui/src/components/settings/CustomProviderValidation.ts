@@ -1,5 +1,5 @@
 import type { CustomProviderPackage } from "../../../../src/shared/provider-model"
-import { endpoint } from "@auracode/local-only"
+import { providerEndpoint } from "@auracode/local-only"
 import type { Modalities, ModelEntry, VariantEntry } from "./CustomProviderModelCard"
 
 type Translator = (key: string, params?: Record<string, string>) => string
@@ -162,7 +162,7 @@ export function validateCustomProvider(input: ValidateArgs): ValidateResult {
   let baseURL = input.form.baseURL.trim()
   let localError: string | undefined
   try {
-    baseURL = endpoint(baseURL)
+    baseURL = providerEndpoint(baseURL)
   } catch (err) {
     localError = err instanceof Error ? err.message : String(err)
   }
