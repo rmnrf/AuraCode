@@ -85,10 +85,13 @@ test("the original custom form saves credentials, headers, multiple models and c
   })
   expect(invalid.result).toBeUndefined()
   expect(invalid.errors.models[0].maxOutputTokens).toContain("Output")
-  const cleared = withCustomProviderDeletions(parsed.value, {
-    ...parsed.value, models: { ...parsed.value.models, vision: { ...parsed.value.models.vision, limit: undefined } },
+  const normalized = sanitizeCustomProviderConfig({
+    ...result.config,
+    models: { vision: { name: "Vision" } },
   })
-  expect(cleared.models.vision.limit).toEqual({ context: null, output: null })
+  expect("error" in normalized).toBe(false)
+  if ("error" in normalized) throw new Error(normalized.error)
+  expect(normalized.value.models.vision.limit).toEqual({ context: 32768, output: 4096 })
 })
 
 test("model discovery authenticates to custom servers and refuses HTTP redirects", async () => {

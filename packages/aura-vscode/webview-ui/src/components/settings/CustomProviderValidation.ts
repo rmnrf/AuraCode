@@ -151,11 +151,10 @@ function modalities(m: ModelEntry): Modalities | undefined {
 function serializeModel(m: ModelEntry): [string, Record<string, unknown>] {
   const ventries = m.reasoning ? m.variants.filter((v) => v.name.trim()).map(serializeVariant) : []
   const entry: Record<string, unknown> = { name: m.name.trim() }
-  const limit = {
-    ...(m.contextWindow.trim() ? { context: Number(m.contextWindow.trim()) } : {}),
-    ...(m.maxOutputTokens.trim() ? { output: Number(m.maxOutputTokens.trim()) } : {}),
+  entry.limit = {
+    context: Number(m.contextWindow.trim() || "32768"),
+    output: Number(m.maxOutputTokens.trim() || "4096"),
   }
-  if (Object.keys(limit).length) entry.limit = limit
   const modes = modalities(m)
   if (m.reasoning) entry.reasoning = true
   if (modes) entry.modalities = modes

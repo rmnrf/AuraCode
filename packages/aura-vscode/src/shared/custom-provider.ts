@@ -84,7 +84,7 @@ export type SanitizedProviderConfig = {
   }
   models: Record<
     string,
-    { name: string; reasoning?: true; modalities?: ModelModalities; limit?: { context?: number; output?: number }; variants?: Record<string, VariantConfig> }
+    { name: string; reasoning?: true; modalities?: ModelModalities; limit: { context: number; output: number }; variants?: Record<string, VariantConfig> }
   >
 }
 
@@ -157,7 +157,10 @@ export function normalizeCustomProviderConfig(
           name: model.name.trim(),
           ...(model.reasoning ? { reasoning: true as const } : {}),
           ...(model.modalities ? { modalities: model.modalities } : {}),
-          ...(model.limit ? { limit: model.limit } : {}),
+          limit: {
+            context: model.limit?.context ?? 32768,
+            output: model.limit?.output ?? 4096,
+          },
           ...(model.variants && Object.keys(model.variants).length > 0 ? { variants: model.variants } : {}),
         },
       ]),
@@ -184,7 +187,7 @@ type ProviderPatch = Omit<SanitizedProviderConfig, "models"> & {
       name: string
       reasoning?: true | null
       modalities?: ModelModalities | null
-      limit?: { context?: number | null; output?: number | null } | null
+      limit?: { context: number; output: number }
       variants?: Record<string, VariantConfig | VariantPatch | null>
     }
   >
@@ -244,13 +247,6 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
       ...(variants ? { variants } : {}),
       ...(oldModel.reasoning !== undefined && newModel.reasoning === undefined ? { reasoning: null } : {}),
       ...(oldModel.modalities !== undefined && newModel.modalities === undefined ? { modalities: null } : {}),
-      ...(isRecord(oldModel.limit)
-        ? { limit: {
-            ...newModel.limit,
-            ...(oldModel.limit.context !== undefined && newModel.limit?.context === undefined ? { context: null } : {}),
-            ...(oldModel.limit.output !== undefined && newModel.limit?.output === undefined ? { output: null } : {}),
-          } }
-        : {}),
     }
   }
 
