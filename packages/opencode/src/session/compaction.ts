@@ -22,6 +22,7 @@ import { serviceUse } from "@opencode-ai/core/effect/service-use"
 import { AuraSessionPromptQueue } from "@/auracode/session/prompt-queue"
 import { AuraCompactionPayloadRecovery } from "@/auracode/session/compaction-payload-recovery"
 import { AuraCompactionChunks } from "@/auracode/session/compaction-chunks"
+import { compactionHistory, summaryText } from "@/auracode/session/compaction-history"
 import { SessionExport } from "@/auracode/session-export"
 import { AuraSession } from "@/auracode/session"
 // auracode_change end
@@ -52,12 +53,6 @@ type Turn = {
 type Tail = {
   start: number
   id: MessageID
-}
-
-type CompletedCompaction = {
-  userIndex: number
-  assistantIndex: number
-  summary: string | undefined
 }
 
 const truncate = (value: string) =>
@@ -99,34 +94,6 @@ const serialize = (message: SessionV1.WithParts) => {
 // auracode_change start - allow safe pruning at cache-invalidating boundaries
 export type PruneReason = "normal" | "post-compaction" | "payload-limit"
 // auracode_change end
-
-function summaryText(message: SessionV1.WithParts) {
-  const text = message.parts
-    .filter((part): part is SessionV1.TextPart => part.type === "text")
-    .map((part) => part.text.trim())
-    .filter(Boolean)
-    .join("\n\n")
-    .trim()
-  return text || undefined
-}
-
-function completedCompactions(messages: SessionV1.WithParts[]) {
-  const users = new Map<MessageID, number>()
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i]
-    if (msg.info.role !== "user") continue
-    if (!msg.parts.some((part) => part.type === "compaction")) continue
-    users.set(msg.info.id, i)
-  }
-
-  return messages.flatMap((msg, assistantIndex): CompletedCompaction[] => {
-    if (msg.info.role !== "assistant") return []
-    if (!msg.info.summary || !msg.info.finish || msg.info.error) return []
-    const userIndex = users.get(msg.info.parentID)
-    if (userIndex === undefined) return []
-    return [{ userIndex, assistantIndex, summary: summaryText(msg) }]
-  })
-}
 
 // auracode_change start
 function preserveRecentBudget(input: { cfg: ConfigV1.Info; model: Provider.Model; outputTokenMax?: number }) {
@@ -430,11 +397,11 @@ const layer = Layer.effect(
         : yield* provider.getModel(userMessage.model.providerID, userMessage.model.modelID).pipe(Effect.orDie)
       const cfg = yield* config.get()
       const history = compactionPart && messages.at(-1)?.info.id === input.parentID ? messages.slice(0, -1) : messages
-      const prior = completedCompactions(history)
-      const hidden = new Set(prior.flatMap((item) => [item.userIndex, item.assistantIndex]))
-      const previousSummary = prior.at(-1)?.summary
+      // Summarize only new turns plus the un-summarized tail of the previous
+      // successful compaction. Reusing the entire historical transcript here
+      // re-introduces old tool outputs and can drop earlier project decisions.
+      const { available, previousSummary } = compactionHistory(history)
       // auracode_change start
-      const available = history.filter((_, index) => !hidden.has(index))
       const selected = replay
         ? { head: available, tail_start_id: undefined }
         : yield* select({ messages: available, cfg, model })

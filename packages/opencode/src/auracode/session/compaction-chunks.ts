@@ -20,7 +20,7 @@ const log = Log.create({ service: "auracode.compaction.chunks" })
 const TOOL_OUTPUT_MAX_CHARS = 2_000
 const TRANSCRIPT_MAX_CHARS = 16_000
 const RATIO = 0.6
-const CONCURRENCY = 3
+const CONCURRENCY = 1 // Avoid concurrent GPU pressure on local inference servers
 const DEPTH = 3
 const OUTPUT = 2_048
 // Chunk budget when the model has no configured context window.
@@ -391,11 +391,9 @@ export namespace AuraCompactionChunks {
   ): Effect.Effect<Output, never, Database.Service> {
     return Effect.gen(function* () {
       const result = yield* run({ ...input, data: [], text: input.prompt(context({ summaries: input.summaries })) })
-      if (
-        result.result === "continue" ||
-        (result.error?.name === "APIError" && result.error.data.message === TRUNCATED_SUMMARY)
-      )
-        return result
+      if (result.result === "continue") return result
+      // Retry an oversized combined summary through smaller ordered groups.
+      // A truncated result is not a usable summary and must never be accepted.
       if (input.depth >= DEPTH || input.summaries.length <= 1) return result
 
       const size = Math.ceil(input.summaries.length / 2)
@@ -428,10 +426,10 @@ export namespace AuraCompactionChunks {
         return "compact" as const
       }
 
-      const final =
-        chunks.length === 1 && (yield* large({ messages: chunks[0].messages, model: input.model, size }))
-          ? partial[0]
-          : yield* reduce({ ...input, summaries: partial.map((item) => item.output!), depth: 0 })
+      // Even one oversized chunk needs the final anchored-summary pass:
+      // partial summaries contain no prior summary, so returning a partial
+      // directly silently discards facts from earlier compactions.
+      const final = yield* reduce({ ...input, summaries: partial.map((item) => item.output!), depth: 0 })
       if (!final || final.result !== "continue" || !final.output) {
         if (yield* fail(input, final)) return "stop" as const
         return "compact" as const
