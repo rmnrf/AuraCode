@@ -1,20 +1,61 @@
-/** Transport policy shared by the extension host, webviews and agent runtime. */
+/** Only user-configured custom provider origins may bypass the loopback transport boundary. */
+const providerOrigins = new Set<string>()
+
+function localHost(host: string): boolean {
+  return ["127.0.0.1", "[::1]", "localhost"].includes(host.toLowerCase())
+}
+
+function privateHost(host: string): boolean {
+  if (localHost(host)) return true
+  const octets = host.split(".").map(Number)
+  if (octets.length === 4 && octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255))
+    return octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168)
+  // IPv6 unique-local ranges (fc00::/7).
+  return /^\[(?:fc|fd)[0-9a-f]{0,2}:/i.test(host)
+}
+
+/** Explicit custom provider URLs: private LAN HTTP or HTTPS on any reachable host. */
+export function providerEndpoint(value: string): string {
+  const url = new URL(value)
+  if (!["http:", "https:"].includes(url.protocol))
+    throw new Error("Custom provider Base URL must use HTTP or HTTPS")
+  if (url.username || url.password) throw new Error("Credentials in endpoint URLs are not supported")
+  if (url.search || url.hash) throw new Error("The LLM endpoint must not contain a query or fragment")
+  if (url.hostname === "localhost") url.hostname = "127.0.0.1"
+  if (["0.0.0.0", "[::]", "255.255.255.255"].includes(url.hostname))
+    throw new Error("Custom provider Base URL must identify a reachable server")
+  if (url.protocol === "http:" && !privateHost(url.hostname))
+    throw new Error("Use HTTPS for remote providers; HTTP is allowed only on localhost or private LAN IPs")
+  return url.toString().replace(/\/+$/, "")
+}
+
+/** Replace the allowlist when effective custom provider configuration changes. */
+function configureProviderOrigins(urls: string[]) {
+  providerOrigins.clear()
+  for (const value of urls) providerOrigins.add(new URL(value).origin)
+}
+
+/** Global fetch stays loopback-only except for exact configured provider origins. */
 export function localURL(value: string | URL): URL {
   const url = new URL(value)
   if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol))
-    throw new Error("AuraCode accepts only local HTTP or WebSocket endpoints")
-  if (!["127.0.0.1", "[::1]", "localhost"].includes(url.hostname.toLowerCase()))
-    throw new Error("AuraCode accepts only 127.0.0.1, localhost or [::1]")
+    throw new Error("AuraCode accepts only HTTP or WebSocket endpoints")
   if (url.username || url.password) throw new Error("Credentials in endpoint URLs are not supported")
-  // Avoid DNS resolution, hosts-file overrides and localhost rebinding.
   if (url.hostname === "localhost") url.hostname = "127.0.0.1"
+  if (!localHost(url.hostname) && !providerOrigins.has(url.origin))
+    throw new Error("AuraCode only permits loopback URLs or explicitly configured custom provider origins")
   return url
 }
 
+/** Internal CLI and extension-host services must remain loopback-only. */
 export function endpoint(value: string): string {
-  const url = localURL(value)
-  if (!["http:", "https:"].includes(url.protocol)) throw new Error("The LLM endpoint must use HTTP or HTTPS")
-  if (url.search || url.hash) throw new Error("The LLM endpoint must not contain a query or fragment")
+  const url = new URL(value)
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error("The internal endpoint must use HTTP or HTTPS")
+  if (url.username || url.password) throw new Error("Credentials in endpoint URLs are not supported")
+  if (url.search || url.hash) throw new Error("The endpoint must not contain a query or fragment")
+  if (!localHost(url.hostname)) throw new Error("The internal endpoint must use localhost, 127.0.0.1 or [::1]")
+  if (url.hostname === "localhost") url.hostname = "127.0.0.1"
   return url.toString().replace(/\/+$/, "")
 }
 
@@ -52,7 +93,7 @@ export function localConfig<T extends Config>(input: T): T {
       const npm =
         LOCAL_ADAPTERS.find((item) => item === selected.npm) ?? (id === "local" ? LOCAL_ADAPTERS[0] : undefined)
       if (!npm) return []
-      const baseURL = endpoint(String(selected.options?.baseURL ?? "http://127.0.0.1:1234/v1"))
+      const baseURL = providerEndpoint(String(selected.options?.baseURL ?? "http://127.0.0.1:1234/v1"))
       const options: Record<string, unknown> = { ...selected.options, baseURL }
       // Version 1.0.0 persisted this placeholder. It must not override a saved key.
       if (options.apiKey === "local" || options.apiKey === "") delete options.apiKey
@@ -80,6 +121,7 @@ export function localConfig<T extends Config>(input: T): T {
       return [[id, { ...selected, name: selected.name ?? "Local OpenAI-compatible server", npm, options, models }]]
     }),
   )
+  configureProviderOrigins(Object.values(providers).map((provider) => String(provider.options.baseURL)))
   const disabled = input.disabled_providers ?? []
   const models = Object.entries(providers)
     .filter(([id]) => !disabled.includes(id))

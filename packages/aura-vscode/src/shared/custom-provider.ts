@@ -1,11 +1,11 @@
 import { z } from "zod"
-import { endpoint } from "@auracode/local-only"
+import { providerEndpoint } from "@auracode/local-only"
 import { CUSTOM_PROVIDER_PACKAGE, CUSTOM_PROVIDER_PACKAGES, PROVIDER_ID_PATTERN } from "./provider-model"
 import type { CustomProviderPackage } from "./provider-model"
 
 const INVALID_PROVIDER_ID = "Invalid provider ID"
 const INVALID_ENV = "Invalid environment variable name"
-const INVALID_BASE_URL = "Use a local HTTP(S) endpoint on 127.0.0.1, localhost or [::1]"
+const INVALID_BASE_URL = "Use HTTPS for remote providers or HTTP(S) on localhost/private LAN"
 
 export const ProviderIDSchema = z.string().trim().regex(PROVIDER_ID_PATTERN, INVALID_PROVIDER_ID)
 export const EnvSchema = z
@@ -41,7 +41,7 @@ export const CustomProviderConfigSchema = z
           .refine(
             (value) => {
               try {
-                endpoint(value)
+                providerEndpoint(value)
                 return true
               } catch {
                 return false
@@ -143,7 +143,7 @@ export function normalizeCustomProviderConfig(
     name: config.name.trim(),
     ...(config.env ? { env: config.env.map((item) => item.trim()) } : {}),
     options: {
-      baseURL: endpoint(config.options.baseURL.trim()),
+      baseURL: providerEndpoint(config.options.baseURL.trim()),
       ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
     },
     models: Object.fromEntries(

@@ -1,4 +1,4 @@
-import { endpoint, LOCAL_ADAPTERS } from "@auracode/local-only" // auracode_change
+import { providerEndpoint, LOCAL_ADAPTERS } from "@auracode/local-only" // auracode_change
 // auracode_change
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
@@ -965,10 +965,10 @@ const layer = Layer.effect(
       try {
         const provider = s.providers[model.providerID]
         if (!LOCAL_ADAPTERS.some((npm) => npm === model.api.npm))
-          throw new Error("AuraCode only supports custom adapters with a loopback endpoint")
+          throw new Error("AuraCode supports only explicitly configured custom provider adapters")
         const options: typeof provider.options = {
           ...provider.options,
-          baseURL: endpoint(String(provider.options.baseURL)),
+          baseURL: providerEndpoint(String(provider.options.baseURL)),
         }
         if (model.api.npm.includes("@ai-sdk/openai-compatible") && options["includeUsage"] !== false) {
           options["includeUsage"] = true

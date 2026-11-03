@@ -3,8 +3,8 @@
  * Runs in the extension host — no CLI backend dependency.
  */
 
-import { endpoint } from "@auracode/local-only"
-import { auraFetch } from "@auracode/local-only/fetch"
+import { providerEndpoint } from "@auracode/local-only"
+import { providerFetch } from "@auracode/local-only/fetch"
 import { parseCustomProviderSecret } from "./custom-provider"
 
 type Options = {
@@ -33,7 +33,7 @@ export class FetchModelsError extends Error {
 }
 
 export async function fetchOpenAIModels(opts: Options): Promise<ModelEntry[]> {
-  const url = endpoint(opts.baseURL) + "/models"
+  const url = providerEndpoint(opts.baseURL) + "/models"
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...opts.headers,
@@ -46,7 +46,7 @@ export async function fetchOpenAIModels(opts: Options): Promise<ModelEntry[]> {
     headers["Authorization"] = `Bearer ${key}`
   }
 
-  const response = await auraFetch(url, {
+  const response = await providerFetch(url, {
     method: "GET",
     headers,
     signal: AbortSignal.timeout(15_000),
