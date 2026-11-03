@@ -17,6 +17,59 @@ The backend keeps coding tools, local conversation storage, agent modes and work
 
 This extension does not control telemetry emitted independently by VS Code, other extensions, or commands the user asks the agent to execute. Shell processes and local inference servers are separate programs. This is not an operating-system firewall.
 
+## Model token limits and user MCP servers
+
+### Per-model token limits
+
+Open **AuraCode → Settings → Providers → Edit custom provider**. Each model card
+contains a collapsed **Context window and output limits** section. Expand it to
+set context size and maximum output tokens independently for each model, then
+save the provider. An empty field uses 32,768 context tokens or 4,096 output
+tokens. Both fields must be positive whole numbers, with output no greater
+than context. The server's actual limits still apply.
+
+### MCP servers (global or project)
+
+Open **Settings → Agent Behaviour → MCP Servers → Add MCP Server**.
+Choose a name, local stdio command or remote URL, and **Global** or **Project**.
+New servers are disabled by default; enable only after reviewing the command
+and server. Click **Save Changes** to persist. Existing servers can be edited,
+enabled, disabled and removed in the same section; remote server authorization
+headers can be configured in the editor.
+
+For direct JSON configuration, use the global `aura.jsonc` (the Settings
+**Global JSON** button) or the project's `.aura/aura.jsonc`
+(**Project JSON** button). For example:
+
+```jsonc
+{
+  "mcp": {
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "C:/projects/my-workspace"],
+      "enabled": false
+    },
+    "team-tools": {
+      "type": "remote",
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" },
+      "oauth": false,
+      "enabled": false
+    }
+  }
+}
+```
+
+Set `enabled: true` only for servers you trust. Local stdio commands execute
+programs on your computer; remote MCP servers may receive context and tool
+inputs. Public remote servers require HTTPS; loopback/private LAN IPs may use
+HTTP. **Do not commit API keys or MCP bearer tokens to project JSON in version
+control.** Prefer a privately stored global configuration for secrets.
+
+Marketplace discovery, notifications, UI buttons and installation are removed
+from the extension. Historical Marketplace API routes reject installation and
+removal requests and do not fetch a catalog.
+
 ## Build on Windows x64
 
 Required: Git with Git LFS, Node 24 and Bun **1.4.4**. The `.github/workflows/build-windows.yml` workflow builds the same package on a Windows runner.
