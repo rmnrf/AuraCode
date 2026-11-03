@@ -1,4 +1,4 @@
-name: Publish AuraCode 1.0.2 VSIX
+name: Publish AuraCode 1.0.3 VSIX
 on:
   workflow_run:
     workflows: ["Build AuraCode for Windows"]
@@ -8,18 +8,18 @@ permissions:
   contents: write
 jobs:
   release:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == 'a86b6b25e898953e6cd39bdc472632fd12a2c4cd' && github.event.workflow_run.head_repository.full_name == 'rmnrf/AuraCode'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == 'rmnrf/AuraCode'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Download audited Windows 1.0.2 package
+      - name: Download successfully tested AuraCode 1.0.3 VSIX
         uses: actions/download-artifact@v4
         with:
-          name: auracode-1.0.2-win32-x64
+          name: auracode-1.0.3-win32-x64
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
           path: verified
-      - name: Verify package identity and publish immutable release
+      - name: Verify release version, source and SHA256; publish
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -27,35 +27,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          file="verified/auracode-1.0.2-win32-x64.vsix"
+          file="verified/auracode-1.0.3-win32-x64.vsix"
           test -s "$file"
-          version=$(unzip -p "$file" extension/package.json | node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync(0,'utf8'));if(p.name!=='aura-code') process.exit(2);console.log(p.version)")
-          if [ "$version" != "1.0.2" ]; then echo "Unexpected VSIX version: $version"; exit 1; fi
-          sha=$(sha256sum "$file" | awk '{print $1}')
-          echo "Verified AuraCode $version SHA256: $sha"
-          if gh release view v1.0.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release v1.0.2 already exists; no assets overwritten."
+          current=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
+          if [ "$current" != "$SOURCE_SHA" ]; then echo "Refusing to publish from a superseded build: $SOURCE_SHA != $current"; exit 1; fi
+          version=$(unzip -p "$file" extension/package.json | node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync(0,'utf8'));if(p.name!=='aura-code'||p.publisher!=='auracode')process.exit(2);console.log(p.version)")
+          if [ "$version" != "1.0.3" ]; then echo "Unexpected extension version: $version"; exit 1; fi
+          digest=$(sha256sum "$file" | awk '{print $1}')
+          echo "Verified AuraCode $version — SHA256 $digest"
+          if gh release view v1.0.3 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release v1.0.3 exists; old assets remain untouched.'
             exit 0
           fi
           cat > notes.md <<EOF
-          AuraCode 1.0.2 — Windows x64 VS Code extension.
+          AuraCode 1.0.3 — Windows x64 VS Code extension.
 
-          Changes:
-          - Custom providers now accept explicitly configured HTTPS servers and HTTP servers on private LAN addresses as well as localhost.
-          - Fetch Models accepts the user's configured Base URL, API key and custom headers.
-          - The backend model adapter uses the same saved custom provider endpoint.
-          - API keys are sent only to the selected endpoint; HTTP redirects remain blocked.
-          - Updated AuraCode branding and icons are included.
-          - Known application event telemetry transports remain disabled.
+          Changes since 1.0.2:
+          - Fixed repeat context compaction: checkpoints now retain the previous summary and summarize only new turns and the protected recent tail.
+          - Chunked summarization carries the preceding summary through the final reduction, including single-chunk cases.
+          - Reduced concurrent summarization pressure on local inference servers.
+          - Added tests covering prior summaries, recent history, incomplete checkpoints and invalid tail markers.
+          - Per-model Context Window and Max Output Tokens are editable in a collapsible model section.
+          - Added custom MCP server configuration in Settings (global or project scope) and JSON; disabled Marketplace catalog and install routes.
+          - Custom HTTPS and private LAN model providers continue to work; privacy protections remain enabled.
 
-          Requirements: Windows x64 and VS Code 1.105.1 or newer.
-          Security: When configuring an external model service, your prompts and API key are sent to that selected service. Only connect to servers you trust.
-
-          CI validation: local policy tests, custom provider discovery tests, disabled telemetry test, backend and extension type checks, ESLint, native Windows build, compiled local inference smoke test and VSIX branding audit.
-          Live usage with your own remote provider is not yet tested.
+          Requires Windows x64 and VS Code 1.105.1 or newer.
+          Local and remote MCP tools can execute commands or receive data when explicitly enabled; review servers before trusting them.
+          CI: context compaction regression tests, privacy and provider tests, backend and extension type checking, ESLint, native Windows compilation, local inference smoke test and packaged branding audit.
+          Full long-session compaction quality on individual model servers is not yet confirmed.
 
           Source commit: $SOURCE_SHA
-          Build run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID
-          SHA256: $sha
+          Build: https://github.com/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID
+          SHA256: $digest
           EOF
-          gh release create v1.0.2 "$file" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "AuraCode 1.0.2 — Windows x64" --notes-file notes.md --latest
+          gh release create v1.0.3 "$file" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'AuraCode 1.0.3 — Windows x64' --notes-file notes.md --latest

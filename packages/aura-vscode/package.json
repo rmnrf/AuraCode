@@ -2,7 +2,7 @@
   "name": "aura-code",
   "displayName": "AuraCode",
   "description": "Local-first AI coding agent with user-configured OpenAI-compatible providers. Event telemetry disabled.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "assets/icons/aura.png",
   "galleryBanner": {
     "color": "#FFFFFF",
