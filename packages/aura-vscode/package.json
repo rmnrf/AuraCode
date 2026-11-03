@@ -1,7 +1,7 @@
 {
   "name": "aura-code",
   "displayName": "AuraCode",
-  "description": "Local AI coding agent for an OpenAI-compatible server running on your computer. No cloud model providers or event telemetry.",
+  "description": "Local-first AI coding agent with user-configured OpenAI-compatible providers. Event telemetry disabled.",
   "version": "1.0.1",
   "icon": "assets/icons/aura.png",
   "galleryBanner": {
@@ -11,7 +11,7 @@
   "publisher": "auracode",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rmnrf/auracode-local.git",
+    "url": "https://github.com/rmnrf/AuraCode.git",
     "directory": "packages/aura-vscode"
   },
   "engines": {

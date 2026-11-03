@@ -1,6 +1,6 @@
 # AuraCode
 
-A local-only derivative of the upstream VS Code coding agent. This worktree targets **Windows x64** and a **local OpenAI-compatible server**.
+A local-first derivative of the upstream VS Code coding agent for **Windows x64**. Local inference is the default; custom providers may also use an explicitly configured private LAN endpoint or HTTPS server.
 
 ## Local model setup
 
@@ -11,7 +11,7 @@ A local-only derivative of the upstream VS Code coding agent. This worktree targ
 5. Fetch the model list or add model IDs manually. Configure reasoning and image support for each model. Existing modalities and reasoning variants are preserved; the advanced configuration button opens the full provider config.
 6. Submit the dialog to save the provider and credentials. Existing providers can be edited, disabled, enabled or deleted from the same settings page.
 
-Only `127.0.0.1`, `localhost` and `[::1]` are accepted. `localhost` is normalized to the numeric loopback address. HTTP redirects are refused. LAN and cloud model endpoints are rejected, including endpoints introduced through project config. Use the exact model IDs reported by your local server. API keys are stored separately through the backend auth store; the editor displays a mask when a key is already saved.
+Custom providers accept `http://localhost`, `http://127.0.0.1`, IPv6 loopback, **HTTP on private LAN IP addresses** (for example `http://192.168.1.50:1234/v1`), and **HTTPS for remote servers**. HTTP to public internet hosts, URL-embedded passwords, query-string secrets and HTTP redirects are refused. Only configured custom provider origins are added to the agent's network allowlist; all other non-local background network requests remain blocked. Use the exact model IDs reported by your provider. API keys are stored separately through the backend auth store; the editor displays a mask when a key is already saved. **A remote custom provider receives your model prompts and API key**—use only a provider you trust.
 
 The backend keeps coding tools, local conversation storage, agent modes and workspace operations. Cloud autocomplete, cloud authentication, cloud session uploads, remote control, online model catalogs, marketplace suggestions, automatic LSP downloads and external plugins are disabled. Event transport, persistent telemetry identity collection and OpenTelemetry exporters have been removed; compatibility hooks do nothing even when telemetry consent is enabled.
 
