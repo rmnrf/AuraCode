@@ -788,7 +788,7 @@ const AgentBehaviourTab: Component<Props> = (props) => {
           <Button variant="secondary" size="small" onClick={() => setNewMcpOpen((value) => !value)}>
             {newMcpOpen() ? "Cancel" : "Add MCP Server"}
           </Button>
-          <Button variant="ghost" size="small" onClick={() => vscode.postMessage(configMessage("project", language.t))}>
+          <Button variant="ghost" size="small" onClick={() => vscode.postMessage(configMessage("local", language.t))}>
             Project JSON
           </Button>
           <Button variant="ghost" size="small" onClick={() => vscode.postMessage(configMessage("global", language.t))}>
