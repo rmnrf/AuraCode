@@ -35,7 +35,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     env:
-      AURA_VERSION: 1.0.1
+      AURA_VERSION: 1.0.2
       AURA_CHANNEL: latest
       AURA_RELEASE: "true"
       AURA_TELEMETRY_LEVEL: "off"
@@ -79,15 +79,15 @@ jobs:
           bun run bundle:production
       - name: Package VSIX
         working-directory: packages/aura-vscode
-        run: bunx vsce package --no-dependencies --target win32-x64 --out ../../auracode-1.0.1-win32-x64.vsix
+        run: bunx vsce package --no-dependencies --target win32-x64 --out ../../auracode-1.0.2-win32-x64.vsix
       - name: Exercise compiled local streaming inference
         run: node script/smoke-local-agent.mjs packages/aura-vscode/bin/aura.exe
       - name: Audit packaged branding
-        run: node script/audit-vsix.mjs auracode-1.0.1-win32-x64.vsix
+        run: node script/audit-vsix.mjs auracode-1.0.2-win32-x64.vsix
       - uses: actions/upload-artifact@v4
         with:
-          name: auracode-1.0.1-win32-x64
-          path: auracode-1.0.1-win32-x64.vsix
+          name: auracode-1.0.2-win32-x64
+          path: auracode-1.0.2-win32-x64.vsix
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
