@@ -82,7 +82,7 @@ import {
 } from "./session-utils"
 import { Identifier } from "../utils/id"
 import { resolveModelSelection } from "./model-selection"
-import { COMPOSER, getAgentModel, getSelected } from "./session-model-store"
+import { COMPOSER, getAgentModel, getSelected, promoteDraftModels } from "./session-model-store"
 import { isModelValid } from "./provider-utils"
 import { createSessionRecovery } from "./session-recovery"
 import { errorIDs, preserveSessionErrors, withoutResolvedSessionErrors } from "./session-errors"
@@ -1142,7 +1142,11 @@ export const SessionProvider: ParentComponent = (props) => {
       if (!store.toolParts[session.id]) setStore("toolParts", session.id, [])
 
       const pendingAgent = draftID ? store.agentSelections[draftID] : pendingAgentSelection()
-      const pendingPicks = draftID ? store.sessionOverrides[draftID] : undefined
+      // Pin the inherited model on promotion; otherwise the completed new
+      // session falls back to config.model and appears to reset its picker.
+      const pendingPicks = draftID
+        ? promoteDraftModels(preferences(), environment(), draftID, pendingAgent ?? agentForScope(draftID))
+        : undefined
       if (draftID) {
         // Goal commands have no optimistic messages, but their empty draft cache must also be removed.
         setStore(

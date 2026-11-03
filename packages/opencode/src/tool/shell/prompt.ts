@@ -304,7 +304,7 @@ export function render(name: string, platform: NodeJS.Platform, limits: Limits, 
       gitCommandRestriction: selected.gitCommandRestriction,
       createPrInstruction: selected.createPrInstruction,
       createPrExample: selected.createPrExample,
-    }),
+    }) + "\nExternal rg/ripgrep commands are disabled. For file and content search, use the built-in Glob and Grep tools instead.",
     parameters: parameterSchema(selected.parameterDescription),
   }
 }

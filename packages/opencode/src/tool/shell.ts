@@ -23,6 +23,7 @@ import { CommandTimeout } from "@/auracode/command-timeout" // auracode_change
 import { heredocs } from "@/auracode/tool/shell-heredoc" // auracode_change
 import { unparsed } from "@/auracode/tool/shell-unparsed" // auracode_change
 import { pattern } from "@/auracode/tool/shell-pattern" // auracode_change
+import { isRipgrepInvocation } from "@/auracode/tool/avoid-ripgrep"
 import { ChildProcess } from "effect/unstable/process"
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { ShellPrompt, type Parameters } from "./shell/prompt"
@@ -391,6 +392,8 @@ export const ShellPermission = Effect.gen(function* () {
       const command = parts(node)
       const tokens = command.map((item) => item.text)
       const cmd = ps || kind === "cmd" ? tokens[0]?.toLowerCase() : tokens[0]
+      if (isRipgrepInvocation(tokens))
+        throw new Error("External rg/ripgrep commands are disabled. Use the built-in Grep or Glob tool.")
 
       if (cmd && (FILES.has(cmd) || (kind === "cmd" && CMD_FILES.has(cmd)))) {
         const accessKind = access(cmd, node)

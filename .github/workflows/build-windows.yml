@@ -54,6 +54,9 @@ jobs:
         run: bun install
       - name: Verify the local-only boundary
         run: node --experimental-strip-types --test packages/local-only/test/policy.test.ts
+      - name: Verify new-task model retention and shell search policy
+        working-directory: packages/aura-vscode
+        run: bun test tests/unit/model-new-task.test.ts tests/unit/no-ripgrep.test.ts
       - name: Verify incremental context compaction
         working-directory: packages/aura-vscode
         # Use the pure-test Bun config; the backend's upstream config loads a removed test preload.

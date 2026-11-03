@@ -4,5 +4,5 @@
 - Filter files by pattern with the include parameter (eg. "*.js", "*.{ts,tsx}")
 - Returns file paths and line numbers with matching lines
 - Use this tool when you need to find files containing specific patterns
-- If you need to identify/count the number of matches within files, use the Bash tool with `rg` (ripgrep) directly. Do NOT use `grep`.
+- Never invoke external rg or ripgrep commands through Shell. Use this Grep tool and narrow the path/include/limit options instead.
 - When you are doing a deep search that may require multiple tool invocations, use the Task tool instead

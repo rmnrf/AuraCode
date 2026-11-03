@@ -81,7 +81,23 @@ export function getSelected(
   sessionID: string | undefined,
   agentName: string,
 ): ModelSelection | null {
-  return resolveModel(env, agentName, getPick(store, sessionID, agentName), store.recentModels)
+  // New tasks prefer the last explicit selection, even if config.model or an
+  // agent default differs. Never override existing session-specific picks.
+  const draft = sessionID === COMPOSER || /^(?:sidebar-)?pending:/.test(sessionID ?? "")
+  const explicit = getPick(store, sessionID, agentName)
+  return resolveModel(env, agentName, explicit ?? (draft ? store.recentModels[0] : undefined), store.recentModels)
+}
+
+/** Keep the new task's chosen model when its draft becomes a real session. */
+export function promoteDraftModels(
+  store: ModelStore,
+  env: ResolveEnv,
+  draft: string,
+  agent: string,
+): Record<string, ModelSelection> | undefined {
+  const picks = store.sessionOverrides[draft] ?? {}
+  const model = getSelected(store, env, draft, agent)
+  return model ? { ...picks, [agent]: picks[agent] ?? model } : Object.keys(picks).length ? picks : undefined
 }
 
 /** Returns the effective model for an agent outside any pick scope. */
